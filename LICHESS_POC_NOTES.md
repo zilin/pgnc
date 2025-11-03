@@ -79,12 +79,7 @@ If you need OAuth (for production apps or sharing), register an OAuth applicatio
    - Uses form-encoded data with `pgn` parameter
    - Each game in PGN file becomes a chapter in the study
 
-3. **API Endpoints**: 
-   - Study creation: `POST /api/study` → **404** (must create manually)
-   - PGN import: `POST /api/study/{id}/import-pgn` → **✅ WORKS**
-   - Uses `application/x-www-form-urlencoded` with `pgn` parameter
-
-2. **Token Refresh**: No token refresh mechanism (tokens may expire)
+3. **Token Refresh**: No token refresh mechanism (tokens may expire)
    - User must re-authenticate with `--auth` flag when token expires
 
 3. **Rate Limiting**: No handling for API rate limits
