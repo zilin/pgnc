@@ -89,7 +89,7 @@ If you need OAuth (for production apps or sharing), register an OAuth applicatio
    - May need to adjust PGN export format for Lichess compatibility
    - Comments and annotations should be preserved via StringExporter
 
-5. **OAuth Client ID**: Currently hardcoded as "pgn-curator"
+6. **OAuth Client ID**: Currently hardcoded as "pgn-curator"
    - Needs to be registered with Lichess or made configurable
 
 ## Current Status: ✅ WORKING WITH WORKAROUND
