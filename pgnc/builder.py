@@ -81,21 +81,21 @@ def build(config: Config, dry_run: bool = False, verbose: bool = False) -> Build
     for game_config in config.games:
         if game_config.index >= len(source_games):
             console.print(
-                f"[yellow]⚠[/yellow] Game index {game_config.index} out of range "
+                f"[yellow]⚠[/yellow] Game index {game_config.index + 1} out of range "
                 f"(only {len(source_games)} games), skipping"
             )
             continue
 
         source_game = source_games[game_config.index]
         game_name = game_config.name or source_game.headers.get(
-            "White", f"Game {game_config.index}"
+            "White", f"Game {game_config.index + 1}"
         )
 
         # Process based on action
         if game_config.action == "skip":
             if verbose:
                 console.print(
-                    f"  [red]✗[/red] Game [{game_config.index}] {game_name}: Skipped completely"
+                    f"  [red]✗[/red] Game [{game_config.index + 1}] {game_name}: Skipped completely"
                 )
             continue
 
@@ -104,7 +104,7 @@ def build(config: Config, dry_run: bool = False, verbose: bool = False) -> Build
             output_games.append(filtered_game)
             if verbose:
                 console.print(
-                    f"  [yellow]⊘[/yellow] Game [{game_config.index}] {game_name}: "
+                    f"  [yellow]⊘[/yellow] Game [{game_config.index + 1}] {game_name}: "
                     "Headers preserved, variations removed"
                 )
             continue
@@ -129,7 +129,7 @@ def build(config: Config, dry_run: bool = False, verbose: bool = False) -> Build
         if config.settings.remove_empty_games and variations_after == 0:
             if verbose:
                 console.print(
-                    f"  [yellow]⚠[/yellow] Game [{game_config.index}] {game_name}: "
+                    f"  [yellow]⚠[/yellow] Game [{game_config.index + 1}] {game_name}: "
                     "Removed (no variations after filtering)"
                 )
             continue
@@ -151,7 +151,7 @@ def build(config: Config, dry_run: bool = False, verbose: bool = False) -> Build
                 depth_info = f", trimmed to {max_depth} moves"
 
             console.print(
-                f"  [green]✓[/green] Game [{game_config.index}] {game_name}: "
+                f"  [green]✓[/green] Game [{game_config.index + 1}] {game_name}: "
                 f"{variations_after} variation(s){filter_info}{depth_info}"
             )
 

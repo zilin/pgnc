@@ -233,12 +233,12 @@ def generate_starter_config(pgn_path: str, output_path: str = None):
 
     # Add all games with include action
     for i, game in enumerate(games):
-        white = game.headers.get("White", f"Game {i}")
+        white = game.headers.get("White", f"Game {i + 1}")
         variations = count_variations(game)
 
         config["games"].append(
             {
-                "index": i,
+                "index": i + 1,  # 1-based indexing (as per project convention)
                 "action": "include",
                 "name": f"{white} ({variations} variations)",
             }
