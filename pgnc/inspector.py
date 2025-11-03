@@ -130,8 +130,10 @@ def _inspect_single_game(game: chess.pgn.Game, index: int, list_variations: bool
     # First moves (common moves until branching point)
     first_moves = _get_first_moves(game, limit=50)
     if first_moves:
+        # Color move numbers for consistency with variations
+        colored_moves = _color_move_sequence(first_moves)
         console.print("[bold]Common opening moves:[/bold]")
-        console.print(f"  {first_moves}\n")
+        console.print(f"  {colored_moves}\n")
 
     # List all variations if requested
     if list_variations:
