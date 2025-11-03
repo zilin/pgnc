@@ -118,6 +118,9 @@ class LichessClient:
         """
         Add a chapter to a study.
 
+        NOTE: Lichess API does not support programmatic chapter addition.
+        This method will raise an error.
+
         Args:
             study_id: Lichess study ID
             name: Chapter name
@@ -125,13 +128,24 @@ class LichessClient:
 
         Returns:
             Chapter data
+
+        Raises:
+            ValueError: Chapter addition not supported by Lichess API
         """
-        # Lichess API endpoint for adding chapters
-        data = {"name": name, "pgn": pgn}
-        response = self._request(
-            "POST", f"/study/{study_id}/chapters", json=data
+        # Lichess API does not currently support programmatic chapter addition
+        # This endpoint returns 404: POST /api/study/{id}/chapters
+        raise ValueError(
+            f"Lichess API does not support programmatic chapter addition. "
+            f"Cannot add chapters to study {study_id}. "
+            f"Chapters must be added manually on lichess.org."
         )
-        return response.json()
+        
+        # Code below is for when/if Lichess adds this feature
+        # data = {"name": name, "pgn": pgn}
+        # response = self._request(
+        #     "POST", f"/study/{study_id}/chapters", json=data
+        # )
+        # return response.json()
 
 
 def generate_pkce() -> Tuple[str, str]:

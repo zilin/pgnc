@@ -2,13 +2,21 @@
 
 ## Current Status
 
-**⚠️ IMPORTANT LIMITATION:** Lichess API does not currently support programmatic study creation.
+**⚠️ FEATURE NOT VIABLE:** Lichess API does not support programmatic study operations.
 
-This is a known limitation - Lichess does not provide an API endpoint for creating studies programmatically. See: https://github.com/lichess-org/api/issues/224
+**Complete Limitations:**
+1. Study creation: `POST /api/study` → 404 Not Found
+2. Chapter addition: `POST /api/study/{id}/chapters` → 404 Not Found
 
-**This POC cannot work until Lichess adds study creation to their API.**
+Lichess does not provide API endpoints for:
+- Creating studies programmatically
+- Adding chapters to studies programmatically
 
-**Last Updated:** After discovering API limitation
+See: https://github.com/lichess-org/api/issues/224
+
+**This POC cannot function with current Lichess API capabilities.**
+
+**Last Updated:** After confirming both endpoints fail
 
 ## What's Implemented
 
@@ -63,17 +71,18 @@ If you need OAuth (for production apps or sharing), register an OAuth applicatio
 
 ## Known Limitations (POC)
 
-1. **⚠️ Study Creation Not Supported**: **CRITICAL LIMITATION**
-   - Lichess API does NOT support programmatic study creation
-   - The endpoint `POST /api/study` does not exist (returns 404)
+1. **⚠️ Study Operations Not Supported**: **CRITICAL LIMITATION**
+   - Lichess API does NOT support ANY programmatic study operations
+   - Study creation: `POST /api/study` → 404 Not Found
+   - Chapter addition: `POST /api/study/{id}/chapters` → 404 Not Found
    - This is a known limitation: https://github.com/lichess-org/api/issues/224
-   - **This feature cannot work until Lichess adds study creation to their API**
-   - Workaround: Users must manually create studies on lichess.org, then we could potentially add chapters via API (if that endpoint exists)
+   - **This feature cannot work at all with current Lichess API**
+   - **No workarounds available** - both endpoints are missing
 
-2. **API Endpoints**: The actual Lichess API endpoints may differ. Need to verify:
-   - Study creation: **NOT SUPPORTED BY LICHESS API**
-   - Chapter addition endpoint format: Unknown if `POST /api/study/{id}/chapters` exists
-   - Response structure: Cannot verify without working endpoints
+2. **API Endpoints**: Both endpoints confirmed non-existent:
+   - Study creation: `POST /api/study` → **404 CONFIRMED**
+   - Chapter addition: `POST /api/study/{id}/chapters` → **404 CONFIRMED**
+   - Response structure: Cannot determine - endpoints don't exist
 
 2. **Token Refresh**: No token refresh mechanism (tokens may expire)
    - User must re-authenticate with `--auth` flag when token expires
@@ -88,30 +97,31 @@ If you need OAuth (for production apps or sharing), register an OAuth applicatio
 5. **OAuth Client ID**: Currently hardcoded as "pgn-curator"
    - Needs to be registered with Lichess or made configurable
 
-## Current Status: NOT WORKING
+## Current Status: COMPLETELY NOT WORKING
 
-**This POC cannot function because Lichess does not provide API endpoints for study creation.**
+**This POC cannot function because Lichess does not provide API endpoints for ANY study operations.**
 
-The implementation is complete but will fail when attempting to create studies, as the Lichess API does not support this operation.
+Both endpoints return 404:
+- Study creation: `POST /api/study` → 404
+- Chapter addition: `POST /api/study/{id}/chapters` → 404
 
-### Error You'll See:
+### Errors You'll See:
 ```
 Failed to create study: Lichess API does not support programmatic study creation.
-Studies must be created manually on lichess.org.
+Failed: Lichess API does not support programmatic chapter addition.
 ```
 
-## Potential Workarounds (Not Implemented)
+## No Workarounds Available
 
-1. **Manual Study Creation + Chapter Addition**
-   - User creates study manually on lichess.org
-   - We could potentially add chapters via API (need to verify if chapter addition endpoint exists)
-
-2. **Web Scraping / Selenium** (Not recommended, fragile)
-   - Could automate the web interface, but violates ToS and is fragile
-
-3. **Wait for Lichess API Update**
+1. ~~Manual Study Creation + Chapter Addition~~ - Chapter addition also fails
+2. **Web Scraping / Selenium** - Not recommended (violates ToS, fragile, breaks easily)
+3. **Wait for Lichess API Update** - Only viable option
    - Monitor: https://github.com/lichess-org/api/issues/224
-   - When/if Lichess adds study creation, this POC will work
+   - When/if Lichess adds study/chapter API endpoints, this POC will work
+
+## Conclusion
+
+This feature is **not implementable** with the current Lichess API. The code structure is in place, but both required endpoints are missing from the Lichess API. This POC serves as documentation of what would be needed when/if Lichess adds these capabilities.
 
 ## Next Steps for Production
 
