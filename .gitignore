@@ -49,3 +49,9 @@ Thumbs.db
 !examples/*.yaml
 !classical_openings.pgn
 
+# Secrets
+.env
+.env.local
+*.token
+~/.pgnc/lichess_token
+
