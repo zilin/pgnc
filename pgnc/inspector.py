@@ -181,17 +181,19 @@ def _get_first_moves(game: chess.pgn.Game, limit: int = 10) -> str:
 
 def _extract_all_variations(game: chess.pgn.Game) -> List[Tuple[str, int]]:
     """
-    Extract all variations as move sequences.
+    Extract all variations as move sequences in PGN format.
 
     Returns:
-        List of (move_sequence, depth) tuples
+        List of (move_sequence, depth) tuples with moves formatted as "1.e4 e5 2.Nf3"
     """
     variations = []
 
     def traverse(node, board, moves_san=[], depth=0):
         if not node.variations:
             # Leaf node - this is a complete variation
-            variations.append((" ".join(moves_san), depth))
+            # Format moves with move numbers (like "1.e4 e5 2.Nf3")
+            formatted = _format_move_sequence(moves_san)
+            variations.append((formatted, depth))
             return
 
         for variation in node.variations:
@@ -204,6 +206,31 @@ def _extract_all_variations(game: chess.pgn.Game) -> List[Tuple[str, int]]:
     traverse(game, game.board())
 
     return variations
+
+
+def _format_move_sequence(moves_san: List[str]) -> str:
+    """
+    Format a list of moves in SAN notation to PGN format with move numbers.
+    
+    Args:
+        moves_san: List of moves in SAN notation (e.g., ["e4", "e5", "Nf3"])
+    
+    Returns:
+        Formatted string (e.g., "1.e4 e5 2.Nf3")
+    """
+    if not moves_san:
+        return ""
+    
+    formatted = []
+    for i, move in enumerate(moves_san):
+        if i % 2 == 0:
+            # White move - add move number
+            formatted.append(f"{i // 2 + 1}.{move}")
+        else:
+            # Black move - just the move
+            formatted.append(move)
+    
+    return " ".join(formatted)
 
 
 def generate_starter_config(pgn_path: str, output_path: str = None):
