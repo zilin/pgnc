@@ -115,7 +115,9 @@ def validate(config_file):
 @click.argument("pgn_file", type=click.Path(exists=True))
 @click.option("--game", type=int, help="Show details for specific game index")
 @click.option(
-    "--list-variations", is_flag=True, help="List all variation move sequences"
+    "--list-variations", 
+    is_flag=True, 
+    help="List all variation move sequences (for specific game if --game is used, or all games)"
 )
 def inspect(pgn_file, game, list_variations):
     """
@@ -125,9 +127,11 @@ def inspect(pgn_file, game, list_variations):
 
         pgnc inspect openings_2025.pgn
 
-        pgnc inspect openings_2025.pgn --game 0
+        pgnc inspect openings_2025.pgn --game 1
 
-        pgnc inspect openings_2025.pgn --game 1 --list-variations
+        pgnc inspect openings_2025.pgn --list-variations  # List variations for all games
+
+        pgnc inspect openings_2025.pgn --game 1 --list-variations  # List variations for game 1
     """
     try:
         inspect_pgn(pgn_file, game_index=game, list_variations=list_variations)

@@ -44,7 +44,14 @@ def inspect_pgn(pgn_path: str, game_index: int = None, list_variations: bool = F
         return
 
     # Show summary of all games
-    _inspect_all_games(games)
+    if list_variations:
+        # If list_variations is True, show variations for all games
+        for i, game in enumerate(games, 1):
+            _inspect_single_game(game, i - 1, list_variations=True)
+            if i < len(games):
+                console.print()  # Add spacing between games
+    else:
+        _inspect_all_games(games)
 
 
 def _inspect_all_games(games: List[chess.pgn.Game]):
