@@ -4,6 +4,8 @@
 
 This is a proof-of-concept implementation for uploading curated PGN files to Lichess as studies.
 
+**Last Updated:** After initial POC - Enhanced error handling and validation
+
 ## What's Implemented
 
 1. **Lichess API Client** (`pgnc/lichess.py`)
@@ -35,20 +37,36 @@ Before using this feature, you need to register an OAuth application with Liches
 Update the `client_id` in `pgnc/lichess.py`:
 - Line ~74: Change `"pgn-curator"` to your registered client ID
 
+## Features Implemented
+
+✅ OAuth2 authentication with PKCE
+✅ Study creation (public/private)
+✅ PGN validation before upload
+✅ Chapter upload with progress tracking
+✅ Token persistence (~/.pgnc/lichess_token)
+✅ Error handling with user-friendly messages
+✅ Study name sanitization
+✅ Graceful failure handling (continues if one chapter fails)
+
 ## Known Limitations (POC)
 
 1. **API Endpoints**: The actual Lichess API endpoints may differ. Need to verify:
-   - Study creation endpoint format
-   - Chapter addition endpoint format
-   - Response structure
+   - Study creation endpoint format: Currently using `POST /api/study`
+   - Chapter addition endpoint format: Currently using `POST /api/study/{id}/chapters`
+   - Response structure: Handles multiple possible response formats
 
-2. **Error Handling**: Limited error handling for API failures
+2. **Token Refresh**: No token refresh mechanism (tokens may expire)
+   - User must re-authenticate with `--auth` flag when token expires
 
-3. **Token Refresh**: No token refresh mechanism (tokens may expire)
+3. **Rate Limiting**: No handling for API rate limits
+   - May need to add retry logic and rate limit detection
 
-4. **Rate Limiting**: No handling for API rate limits
+4. **PGN Format**: Basic validation only
+   - May need to adjust PGN export format for Lichess compatibility
+   - Comments and annotations should be preserved via StringExporter
 
-5. **PGN Format**: May need to adjust PGN export format for Lichess compatibility
+5. **OAuth Client ID**: Currently hardcoded as "pgn-curator"
+   - Needs to be registered with Lichess or made configurable
 
 ## Testing
 
