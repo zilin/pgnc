@@ -21,21 +21,30 @@ This is a proof-of-concept implementation for uploading curated PGN files to Lic
 
 ## Setup Requirements
 
-### 1. Register OAuth Application with Lichess
+### Option 1: Personal API Token (Recommended - Simplest)
 
-Before using this feature, you need to register an OAuth application with Lichess:
+For personal use, you can use a personal API token (no OAuth app registration needed):
 
-1. Go to https://lichess.org/account/oauth/app/create
-2. Create a new application:
+1. Go to https://lichess.org/account/oauth/token/create
+2. Create a new token with `study:write` scope
+3. Copy the token
+4. Use it with:
+   ```bash
+   pgnc upload my_repertoire.pgn --token YOUR_TOKEN
+   ```
+   Or save it to `~/.pgnc/lichess_token` file for automatic use
+
+### Option 2: OAuth Application (For Production/Shared Use)
+
+If you need OAuth (for production apps or sharing), register an OAuth application:
+
+1. Go to https://lichess.org/account/oauth/app/create (if available)
+2. Create a new application with:
    - Name: `pgn-curator` (or your preferred name)
    - Redirect URI: `http://localhost:8080/oauth/callback`
    - Scopes: `study:write`
-3. Note your `client_id` (you'll need to update the code)
-
-### 2. Update Client ID
-
-Update the `client_id` in `pgnc/lichess.py`:
-- Line ~74: Change `"pgn-curator"` to your registered client ID
+3. Update `client_id` in `pgnc/lichess.py` (line ~157)
+4. Use `--oauth` flag when uploading
 
 ## Features Implemented
 
@@ -76,8 +85,17 @@ To test the POC:
 # Install dependencies
 pip install -e .
 
-# Upload a PGN file
+# Get your personal API token from:
+# https://lichess.org/account/oauth/token/create
+
+# Upload a PGN file (using personal token)
 pgnc upload my_repertoire.pgn --name "Test Study"
+
+# Or with explicit token
+pgnc upload my_repertoire.pgn --token YOUR_TOKEN --name "Test Study"
+
+# Or using OAuth (if you have registered an app)
+pgnc upload my_repertoire.pgn --oauth --name "Test Study"
 ```
 
 ## Next Steps for Production

@@ -29,14 +29,16 @@ OAUTH_SCOPES = ["study:write"]  # Permissions needed
 class LichessClient:
     """Client for interacting with Lichess API."""
 
-    def __init__(self, access_token: Optional[str] = None):
+    def __init__(self, access_token: Optional[str] = None, api_token: Optional[str] = None):
         """
         Initialize Lichess client.
 
         Args:
-            access_token: Optional access token (if already authenticated)
+            access_token: OAuth access token (if using OAuth)
+            api_token: Personal API token (alternative to OAuth, simpler for personal use)
         """
-        self.access_token = access_token
+        # Prefer API token if provided (simpler for personal use)
+        self.access_token = api_token or access_token
         self.base_url = LICHESS_API_BASE
 
     def _get_headers(self) -> Dict[str, str]:
@@ -298,13 +300,16 @@ def load_token(token_file: Optional[str] = None) -> Optional[str]:
         return None
 
     with open(token_file, "r") as f:
-        return f.read().strip()
+        token = f.read().strip()
+        # Remove any trailing newlines or whitespace
+        return token.strip()
 
 
 def upload_pgn_to_study(
     pgn_path: str,
     study_name: Optional[str] = None,
     access_token: Optional[str] = None,
+    api_token: Optional[str] = None,
     visibility: str = "public",
 ) -> Dict:
     """
@@ -313,24 +318,26 @@ def upload_pgn_to_study(
     Args:
         pgn_path: Path to PGN file
         study_name: Name for the study (default: filename)
-        access_token: Lichess access token
+        access_token: OAuth access token (deprecated, use api_token)
+        api_token: Personal API token (preferred, simpler)
         visibility: "public" or "private"
 
     Returns:
         Study information with ID
     """
     # Load token if not provided
-    if not access_token:
-        access_token = load_token()
-        if not access_token:
-            console.print(
-                "[yellow]No access token found. Starting authentication...[/yellow]\n"
-            )
-            access_token = authenticate()
-            save_token(access_token)
+    token = api_token or access_token
+    if not token:
+        token = load_token()
+    
+    if not token:
+        raise ValueError(
+            "No API token found. Get your token from "
+            "https://lichess.org/account/oauth/token/create"
+        )
 
-    # Initialize client
-    client = LichessClient(access_token)
+    # Initialize client (pass token as api_token for personal tokens)
+    client = LichessClient(api_token=token)
 
     # Verify authentication
     try:
