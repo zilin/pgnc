@@ -85,7 +85,7 @@ If you need OAuth (for production apps or sharing), register an OAuth applicatio
 4. **Rate Limiting**: No handling for API rate limits
    - May need to add retry logic and rate limit detection
 
-4. **PGN Format**: Basic validation only
+5. **PGN Format**: Basic validation only
    - May need to adjust PGN export format for Lichess compatibility
    - Comments and annotations should be preserved via StringExporter
 
