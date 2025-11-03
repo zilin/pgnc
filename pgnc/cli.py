@@ -184,7 +184,12 @@ def init(pgn_file, output):
     is_flag=True,
     help="Use OAuth flow instead of personal API token"
 )
-def upload(pgn_file, name, private, token, auth, oauth):
+@click.option(
+    "--study-id",
+    help="Existing study ID (workaround - Lichess API doesn't support study creation). "
+         "Get this from your study URL on lichess.org"
+)
+def upload(pgn_file, name, private, token, auth, oauth, study_id):
     """
     Upload PGN file to Lichess as a study.
 
@@ -193,19 +198,18 @@ def upload(pgn_file, name, private, token, auth, oauth):
     Authentication: Uses personal API token by default (simpler). Get your token from:
     https://lichess.org/account/oauth/token/create
     
-    Alternatively, use --oauth for OAuth flow (requires registered OAuth app).
+    IMPORTANT: Lichess API does not support programmatic study creation.
+    Use --study-id with an existing study ID, or create study manually first.
 
     Examples:
 
-        pgnc upload my_repertoire.pgn
+        # Workaround: Upload to existing study
+        pgnc upload my_repertoire.pgn --study-id ABC123
 
+        pgnc upload my_repertoire.pgn --study-id ABC123 --token YOUR_TOKEN
+
+        # Will fail (study creation not supported by Lichess API)
         pgnc upload my_repertoire.pgn --name "My Opening Repertoire"
-
-        pgnc upload my_repertoire.pgn --private
-
-        pgnc upload my_repertoire.pgn --token YOUR_TOKEN  # Use custom token
-
-        pgnc upload my_repertoire.pgn --oauth  # Use OAuth flow
     """
     try:
         visibility = "private" if private else "public"
@@ -244,6 +248,7 @@ def upload(pgn_file, name, private, token, auth, oauth):
             study_name=name,
             api_token=access_token,
             visibility=visibility,
+            study_id=study_id,
         )
         
         console.print(f"\n[green]✅ Upload complete![/green]")

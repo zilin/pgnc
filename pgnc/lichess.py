@@ -326,6 +326,7 @@ def upload_pgn_to_study(
     access_token: Optional[str] = None,
     api_token: Optional[str] = None,
     visibility: str = "public",
+    study_id: Optional[str] = None,
 ) -> Dict:
     """
     Upload PGN file to Lichess as a study.
@@ -336,9 +337,14 @@ def upload_pgn_to_study(
         access_token: OAuth access token (deprecated, use api_token)
         api_token: Personal API token (preferred, simpler)
         visibility: "public" or "private"
+        study_id: Optional existing study ID (workaround - use existing study instead of creating new)
 
     Returns:
         Study information with ID
+
+    Note:
+        Lichess API does not support programmatic study creation.
+        Either provide an existing study_id, or create study manually first.
     """
     # Load token if not provided
     token = api_token or access_token
@@ -379,36 +385,54 @@ def upload_pgn_to_study(
     if not games:
         raise ValueError(f"No games found in {pgn_path}")
 
-    # Determine study name
-    if not study_name:
-        study_name = Path(pgn_path).stem.replace("_", " ").title()
-    
-    # Sanitize study name (Lichess may have restrictions)
-    # Remove or replace invalid characters
-    study_name = study_name.strip()[:100]  # Limit length
-    
-    if not study_name:
-        study_name = "Untitled Study"
-
-    # Create study
-    console.print(f"\n[cyan]Creating study: {study_name}[/cyan]")
-    try:
-        study = client.create_study(study_name, visibility=visibility)
-    except Exception as e:
-        raise ValueError(f"Failed to create study: {str(e)}") from e
+    # Handle study creation/selection
+    if study_id:
+        # Use existing study
+        console.print(f"\n[cyan]Using existing study: {study_id}[/cyan]\n")
+        # Verify study exists by trying to get it (optional check)
+        # For now, we'll just proceed and let chapter addition fail if study doesn't exist
+    else:
+        # Try to create study (will fail - documented limitation)
+        if not study_name:
+            study_name = Path(pgn_path).stem.replace("_", " ").title()
         
-    # Extract study ID (Lichess may return different formats)
-    study_id = (
-        study.get("id") 
-        or study.get("studyId") 
-        or study.get("data", {}).get("id")
-    )
-    if not study_id:
-        raise ValueError(
-            f"Failed to get study ID from response. Response: {study}"
-        )
+        study_name = study_name.strip()[:100]
+        if not study_name:
+            study_name = "Untitled Study"
 
-    console.print(f"[green]✓ Study created: {study_id}[/green]\n")
+        console.print(f"\n[cyan]Attempting to create study: {study_name}[/cyan]")
+        console.print(
+            "[yellow]⚠ Note: Lichess API does not support programmatic study creation.[/yellow]"
+        )
+        console.print(
+            "[yellow]   Please create a study manually on lichess.org and use --study-id option.[/yellow]\n"
+        )
+        
+        try:
+            study = client.create_study(study_name, visibility=visibility)
+        except ValueError as e:
+            # This is the expected error - provide helpful guidance
+            console.print(f"[red]✗ {str(e)}[/red]\n")
+            console.print("[cyan]Workaround:[/cyan]")
+            console.print("1. Create a study manually on https://lichess.org/study")
+            console.print("2. Get the study ID from the URL (e.g., study ID from https://lichess.org/study/ABC123)")
+            console.print("3. Use: pgnc upload your_file.pgn --study-id ABC123\n")
+            raise
+        except Exception as e:
+            raise ValueError(f"Failed to create study: {str(e)}") from e
+            
+        # Extract study ID (if creation somehow succeeded)
+        study_id = (
+            study.get("id") 
+            or study.get("studyId") 
+            or study.get("data", {}).get("id")
+        )
+        if not study_id:
+            raise ValueError(
+                f"Failed to get study ID from response. Response: {study}"
+            )
+
+        console.print(f"[green]✓ Study created: {study_id}[/green]\n")
 
     # Upload each game as a chapter
     console.print(f"[cyan]Uploading {len(games)} game(s) as chapters...[/cyan]\n")
