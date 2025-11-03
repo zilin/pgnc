@@ -10,19 +10,19 @@ PGN Curator is a Python command-line tool that helps chess coaches and parents c
 
 ### Key Features
 
-✅ **Config-driven workflow** - All curation in YAML, track changes with git  
-✅ **Shorthand range syntax** - Super simple: `include: "9,28"`  
-✅ **1-based indexing** - Works like chess software (Game [1], [2], [3]...)  
-✅ **Fast processing** - 452K variations in <5 seconds  
-✅ **Zero data loss** - Preserves all GM annotations and comments  
-✅ **Beautiful CLI** - Rich output with statistics and progress  
+✅ **Config-driven workflow** - All curation in YAML, track changes with git
+✅ **Shorthand range syntax** - Super simple: `include: "9,28"`
+✅ **1-based indexing** - Works like chess software (Game [1], [2], [3]...)
+✅ **Fast processing** - 452K variations in <5 seconds
+✅ **Zero data loss** - Preserves all GM annotations and comments
+✅ **Beautiful CLI** - Rich output with statistics and progress
 
 ## 🚀 Quick Start
 
 ### Installation
 
 ```bash
-git clone https://github.com/yourusername/pgnc.git
+git clone https://github.com/zilin/pgnc.git
 cd pgnc
 pip install -e .
 ```
@@ -161,9 +161,8 @@ For questions or issues:
 
 ---
 
-**Version**: 0.1.0  
-**Status**: ✅ Production Ready  
-**Last Updated**: 2025-01-29  
+**Version**: 0.1.0
+**Status**: ✅ Production Ready
+**Last Updated**: 2025-01-29
 
 🎯♟️ **Happy Training!**
-
