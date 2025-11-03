@@ -1,0 +1,15 @@
+# Simple Example Configuration
+# This shows the most basic usage of PGN Curator
+
+name: "Simple Repertoire - Layer 1"
+description: "Quick start example with shorthand syntax"
+source: classical_openings.pgn
+output: my_repertoire.pgn
+
+settings:
+  max_depth: 14  # Trim all variations to 14 moves
+
+# Super simple: Just include the games you want!
+# All other games are automatically skipped
+include: "1"  # Just the first game (Sicilian Najdorf)
+
