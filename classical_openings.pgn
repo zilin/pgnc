@@ -10,85 +10,33 @@
 [Opening "Sicilian Defense: Najdorf Variation"]
 
 1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 a6 6. g3 g6 ( 6... e5 7. Nde2
-Be7 7... b5 8. Nd5 Nbd7 8... Nxd5 9. Qxd5 Ra7 10. Be3 Rb7 11. Nc3 b4 12.
+Be7 ( 7... b5 8. Nd5 Nbd7 ( 8... Nxd5 9. Qxd5 Ra7 10. Be3 Rb7 11. Nc3 b4 12.
 Na4 Be7 13. Bc4 O-O 14. O-O Qc7 15. Qd3 Bd7 16. b3 ) 9. Nec3 Be7 10. a4 Nxd5
 11. Nxd5 bxa4 12. Be3 O-O 13. Rxa4 Bg5 14. Bxg5 Qxg5 15. Ra2 a5 16. Bg2 ) (
 7... Nbd7 8. a4 Be7 9. h3 h6 10. Bg2 Rb8 11. a5 b5 12. axb6 Qxb6 13. O-O O-O
-14. g4 Nc5 15. Ng3 Qc7 16. Re1 ) 7. Be3 8. Bg2 O-O 9. a4 Nc6 10. Be3 Nxd4
-11. Bxd4 Bd7 12. a5 Bc6 13. Re1 e6 14. Qd2 Qc7 15. Bb6 *
+14. g4 Nc5 15. Ng3 Qc7 16. Re1 ) ( 7... Be6 8. Bg2 Be7 9. a4 O-O 10. O-O Nbd7
+11. b3 Nc5 ( 11... b5 12. axb5 axb5 13. Rxa8 Qxa8 14. Nxb5 Nxe4 15. Nc7 Qc6 16.
+Nxe6 ) 12. a5 b5 13. axb6 Qxb6 14. Be3 a5 15. h3 { [%cal Gg3g4] } ) 8. Bg2 ( 8.
+h3 b5 9. a3 O-O 10. g4 Nbd7 11. Be3 Nb6 12. Bg2 Nc4 13. Bc1 Nb6 14. Be3 Bb7 15.
+Ng3 Nfd7 16. h4 ) 8... O-O ( 8... b5 9. Nd5 Nbd7 10. Nec3 O-O ( 10... Nxd5 11.
+Nxd5 O-O 12. a4 bxa4 13. Rxa4 Nb6 14. Nxe7+ Qxe7 15. Ra5 Qc7 16. b3 ) 11. a4
+bxa4 12. Nxa4 Nxd5 13. Qxd5 Nb6 14. Nxb6 Qxb6 15. Qxa8 Bb7 16. Be3 ) ( 8...
+Nbd7 9. a4 O-O ( 9... Nc5 10. Bg5 Be6 11. Bxf6 Bxf6 12. Nd5 Nd7 13. Nec3 O-O
+14. O-O Rc8 15. Qe2 Nb6 16. Rfd1 ) 10. O-O h6 11. Be3 Rb8 12. a5 b5 13. axb6
+Nxb6 14. b3 Bb7 15. h3 a5 16. Re1 ) 9. a4 ( 9. Be3 Ng4 ( 9... Be6 10. a4 Nbd7
+11. O-O Rc8 12. b3 h6 13. h3 Nc5 14. a5 Bd7 15. g4 Ne6 16. Re1 ) 10. Bd2 Nf6
+11. a4 Nc6 12. O-O Nb4 13. a5 b6 14. axb6 Qxb6 15. Na2 Nxa2 16. Rxa2 ) 9... Bd7
+( 9... Nc6 10. b3 Bg4 11. h3 Bh5 12. Bg5 Rc8 13. g4 Bg6 14. Bxf6 Bxf6 15. Nd5
+Bh4 16. O-O ) 10. O-O Nc6 11. b3 Rc8 12. Nd5 Nxd5 13. exd5 Na5 14. Qd3 g6 15.
+Ra2 Bf5 16. Qd1 ) ( 6... e6 7. Bg2 Be7 ( 7... Qc7 8. O-O Be7 9. f4 Nc6 10. Nxc6
+bxc6 11. e5 dxe5 12. fxe5 Nd7 13. Ne4 O-O 14. Bf4 a5 15. Qh5 a4 16. Kh1 ) 8. b3
+( 8. O-O O-O 9. Be3 Qc7 10. g4 h6 11. f4 Nc6 12. g5 hxg5 13. fxg5 Nh7 14. Nxc6
+bxc6 15. Qh5 Qa5 16. h4 ) 8... Bd7 9. O-O h5 10. Re1 h4 11. Bb2 Qa5 12. a4 Qc5
+13. Rb1 h3 14. Bf1 Nc6 15. Na2 Ne5 16. c4 ) ( 6... Nc6 7. Bg2 Bg4 8. Nde2 g6 9.
+h3 Bxe2 10. Nxe2 Bg7 11. O-O O-O 12. Be3 Rc8 13. Qd2 Qa5 14. Qxa5 Nxa5 15. c3
+Nc4 16. Bc1 ) 7. Bg2 Bg7 8. h3 O-O 9. O-O Nc6 10. Be3 Nxd4 ( 10... Qc7 11. Qd2
+Bd7 12. Nxc6 Bxc6 13. Nd5 Bxd5 14. exd5 Nd7 15. c3 b5 16. Rfe1 ) ( 10... Bd7
+11. Nde2 b5 12. b3 Ne8 13. Rc1 e6 14. Qd2 Rc8 15. Nd1 Qa5 16. c3 ) 11. Bxd4 Bd7
+( 11... Be6 12. Nd5 Bxd5 13. exd5 Nd7 14. Bxg7 Kxg7 15. Qd4+ Kg8 16. Rfe1 ) 12.
+a4 Rc8 13. a5 Bc6 14. Re1 e6 15. Qd2 Qc7 16. Bb6 *
 
-[Event "Classical Openings Collection"]
-[Site "?"]
-[Date "2025.01.01"]
-[Round "2"]
-[White "Opponent"]
-[Black "Classical Player"]
-[Result "*"]
-[ECO "C11"]
-[Annotator "GM Theory"]
-[Opening "French Defense: Classical Variation"]
-
-1. e4 e6 2. d4 d5 3. Nc3 Nf6 4. e5 Nfd7 5. f4 c5 6. Nf3 Nc6 7. Be3 cxd4
-8. Nxd4 Bc5 9. Qd2 O-O 10. O-O-O a6 11. h4 b5 12. h5 b4 13. Na4 Bxd4
-14. Bxd4 Nc5 15. Nxc5 Qb6 16. Bxc5 Qxc5 17. Bd3 Bd7 18. Rh3 Rae8 19. Rdh1 *
-
-[Event "Classical Openings Collection"]
-[Site "?"]
-[Date "2025.01.01"]
-[Round "3"]
-[White "Classical Player"]
-[Black "Opponent"]
-[Result "*"]
-[ECO "C84"]
-[Annotator "GM Theory"]
-[Opening "Ruy Lopez: Closed Defense"]
-
-1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Be7 6. Re1 b5 7. Bb3 d6
-8. c3 O-O 9. h3 Nb8 10. d4 Nbd7 11. c4 c6 12. cxb5 axb5 13. Nc3 Bb7 14. Bg5
-b4 15. Nb1 h6 16. Bh4 c5 17. dxe5 dxe5 18. Nxe5 Nxe5 19. Rxe5 c4 20. Nd2
-21. Bb1 Re8 22. Rxe8+ Qxe8 23. Nf1 *
-
-[Event "Classical Openings Collection"]
-[Site "?"]
-[Date "2025.01.01"]
-[Round "4"]
-[White "Classical Player"]
-[Black "Opponent"]
-[Result "*"]
-[ECO "D60"]
-[Annotator "GM Theory"]
-[Opening "Queen's Gambit Declined: Orthodox Defense"]
-
-1. d4 d5 2. c4 e6 3. Nc3 Nf6 4. Bg5 Be7 5. e3 O-O 6. Nf3 Nbd7 7. Qc2 c5
-8. Rd1 cxd4 9. exd4 b6 10. Bd3 Bb7 11. O-O Rc8 12. Rfe1 Qc7 13. Ne5 Nxe5
-14. dxe5 Nd7 15. Bf4 Qd8 16. Bg3 Rc6 17. f4 Nc5 18. Bc2 Bc8 *
-
-[Event "Classical Openings Collection"]
-[Site "?"]
-[Date "2025.01.01"]
-[Round "5"]
-[White "Opponent"]
-[Black "Classical Player"]
-[Result "*"]
-[ECO "E92"]
-[Annotator "GM Theory"]
-[Opening "King's Indian Defense: Classical Variation"]
-
-1. d4 Nf6 2. c4 g6 3. Nc3 Bg7 4. e4 d6 5. Nf3 O-O 6. Be2 e5 7. O-O Nc6
-8. d5 Ne7 9. Ne1 Nd7 10. Be3 f5 11. f3 f4 12. Bf2 g5 13. g4 Nf6 14. Ng2 c5
-15. a4 Rf7 16. a5 h5 17. gxh5 g4 18. fxg4 Nxg4 19. Nf4 *
-
-[Event "Classical Openings Collection"]
-[Site "?"]
-[Date "2025.01.01"]
-[Round "6"]
-[White "Opponent"]
-[Black "Classical Player"]
-[Result "*"]
-[ECO "B18"]
-[Annotator "GM Theory"]
-[Opening "Caro-Kann Defense: Classical Variation"]
-
-1. e4 c6 2. d4 d5 3. Nc3 dxe4 4. Nxe4 Bf5 5. Ng3 Bg6 6. h4 h6 7. Nf3 Nd7
-8. h5 Bh7 9. Bd3 Bxd3 10. Qxd3 e6 11. Bf4 Ngf6 12. O-O-O Be7 13. Ne4 O-O
-14. c4 c5 15. dxc5 Nxc5 16. Qc2 Re8 17. Ne5 Rad8 18. Kb1 *
