@@ -82,7 +82,7 @@ If you need OAuth (for production apps or sharing), register an OAuth applicatio
 3. **Token Refresh**: No token refresh mechanism (tokens may expire)
    - User must re-authenticate with `--auth` flag when token expires
 
-3. **Rate Limiting**: No handling for API rate limits
+4. **Rate Limiting**: No handling for API rate limits
    - May need to add retry logic and rate limit detection
 
 4. **PGN Format**: Basic validation only
