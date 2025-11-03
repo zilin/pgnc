@@ -1,5 +1,6 @@
 """PGN file inspection and analysis."""
 
+import re
 import chess
 import chess.pgn
 from typing import List, Dict, Tuple
@@ -138,7 +139,11 @@ def _inspect_single_game(game: chess.pgn.Game, index: int, list_variations: bool
         variations_list = _extract_all_variations(game)
 
         for i, (moves_san, depth) in enumerate(variations_list, 1):
-            console.print(f"  {i}. {moves_san} [dim](depth: {depth})[/dim]")
+            # Color the variation index and move numbers differently
+            colored_moves = _color_move_sequence(moves_san)
+            console.print(
+                f"  [cyan]{i}.[/cyan] {colored_moves} [dim](depth: {depth})[/dim]"
+            )
 
 
 def _get_max_depth(game: chess.pgn.Game) -> int:
@@ -231,6 +236,29 @@ def _format_move_sequence(moves_san: List[str]) -> str:
             formatted.append(move)
     
     return " ".join(formatted)
+
+
+def _color_move_sequence(moves_string: str) -> str:
+    """
+    Color move numbers in a PGN move sequence for better readability.
+    
+    Args:
+        moves_string: PGN-formatted move sequence (e.g., "1.e4 e5 2.Nf3")
+    
+    Returns:
+        String with Rich color markup for move numbers
+    """
+    # Match move numbers (e.g., "1.", "2.", "15.") and color them
+    # Pattern matches a number followed by a dot at word boundary
+    pattern = r'(\d+\.)'
+    
+    def color_replacer(match):
+        return f"[yellow]{match.group(1)}[/yellow]"
+    
+    # Replace move numbers with colored versions
+    colored = re.sub(pattern, color_replacer, moves_string)
+    
+    return colored
 
 
 def generate_starter_config(pgn_path: str, output_path: str = None):
