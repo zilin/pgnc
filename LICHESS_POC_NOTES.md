@@ -2,9 +2,13 @@
 
 ## Current Status
 
-This is a proof-of-concept implementation for uploading curated PGN files to Lichess as studies.
+**⚠️ IMPORTANT LIMITATION:** Lichess API does not currently support programmatic study creation.
 
-**Last Updated:** After initial POC - Enhanced error handling and validation
+This is a known limitation - Lichess does not provide an API endpoint for creating studies programmatically. See: https://github.com/lichess-org/api/issues/224
+
+**This POC cannot work until Lichess adds study creation to their API.**
+
+**Last Updated:** After discovering API limitation
 
 ## What's Implemented
 
@@ -59,10 +63,17 @@ If you need OAuth (for production apps or sharing), register an OAuth applicatio
 
 ## Known Limitations (POC)
 
-1. **API Endpoints**: The actual Lichess API endpoints may differ. Need to verify:
-   - Study creation endpoint format: Currently using `POST /api/study`
-   - Chapter addition endpoint format: Currently using `POST /api/study/{id}/chapters`
-   - Response structure: Handles multiple possible response formats
+1. **⚠️ Study Creation Not Supported**: **CRITICAL LIMITATION**
+   - Lichess API does NOT support programmatic study creation
+   - The endpoint `POST /api/study` does not exist (returns 404)
+   - This is a known limitation: https://github.com/lichess-org/api/issues/224
+   - **This feature cannot work until Lichess adds study creation to their API**
+   - Workaround: Users must manually create studies on lichess.org, then we could potentially add chapters via API (if that endpoint exists)
+
+2. **API Endpoints**: The actual Lichess API endpoints may differ. Need to verify:
+   - Study creation: **NOT SUPPORTED BY LICHESS API**
+   - Chapter addition endpoint format: Unknown if `POST /api/study/{id}/chapters` exists
+   - Response structure: Cannot verify without working endpoints
 
 2. **Token Refresh**: No token refresh mechanism (tokens may expire)
    - User must re-authenticate with `--auth` flag when token expires
@@ -77,26 +88,30 @@ If you need OAuth (for production apps or sharing), register an OAuth applicatio
 5. **OAuth Client ID**: Currently hardcoded as "pgn-curator"
    - Needs to be registered with Lichess or made configurable
 
-## Testing
+## Current Status: NOT WORKING
 
-To test the POC:
+**This POC cannot function because Lichess does not provide API endpoints for study creation.**
 
-```bash
-# Install dependencies
-pip install -e .
+The implementation is complete but will fail when attempting to create studies, as the Lichess API does not support this operation.
 
-# Get your personal API token from:
-# https://lichess.org/account/oauth/token/create
-
-# Upload a PGN file (using personal token)
-pgnc upload my_repertoire.pgn --name "Test Study"
-
-# Or with explicit token
-pgnc upload my_repertoire.pgn --token YOUR_TOKEN --name "Test Study"
-
-# Or using OAuth (if you have registered an app)
-pgnc upload my_repertoire.pgn --oauth --name "Test Study"
+### Error You'll See:
 ```
+Failed to create study: Lichess API does not support programmatic study creation.
+Studies must be created manually on lichess.org.
+```
+
+## Potential Workarounds (Not Implemented)
+
+1. **Manual Study Creation + Chapter Addition**
+   - User creates study manually on lichess.org
+   - We could potentially add chapters via API (need to verify if chapter addition endpoint exists)
+
+2. **Web Scraping / Selenium** (Not recommended, fragile)
+   - Could automate the web interface, but violates ToS and is fragile
+
+3. **Wait for Lichess API Update**
+   - Monitor: https://github.com/lichess-org/api/issues/224
+   - When/if Lichess adds study creation, this POC will work
 
 ## Next Steps for Production
 

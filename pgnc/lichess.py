@@ -86,16 +86,31 @@ class LichessClient:
         """
         Create a new study.
 
+        NOTE: Lichess currently does not support programmatic study creation via API.
+        This method will raise an error. See LICHESS_POC_NOTES.md for alternatives.
+
         Args:
             name: Study name
             visibility: "public" or "private"
 
         Returns:
             Study data with ID
+
+        Raises:
+            ValueError: Study creation not supported by Lichess API
         """
-        data = {"name": name, "visibility": visibility}
-        response = self._request("POST", "/study", json=data)
-        return response.json()
+        # Lichess API does not currently support programmatic study creation
+        # This is a known limitation: https://github.com/lichess-org/api/issues/224
+        raise ValueError(
+            "Lichess API does not support programmatic study creation. "
+            "Studies must be created manually on lichess.org. "
+            "See LICHESS_POC_NOTES.md for workarounds and alternatives."
+        )
+        
+        # Code below is for when/if Lichess adds this feature
+        # data = {"name": name, "visibility": visibility}
+        # response = self._request("POST", "/study", json=data)
+        # return response.json()
 
     def add_chapter_to_study(
         self, study_id: str, name: str, pgn: str
