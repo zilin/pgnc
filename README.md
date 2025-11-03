@@ -66,8 +66,8 @@ Each layer builds on the previous, ensuring students understand before memorizin
 | Metric | Before | After | Reduction |
 |--------|--------|-------|-----------|
 | Games | 1 | 1 | 0% |
-| Variations | 356 | 150 | 57.9% |
-| Avg Depth | 31 moves | 14 moves | 54.8% |
+| Variations | 22 | 8 | 63.6% |
+| Avg Depth | 30.9 moves | 14.0 moves | 54.7% |
 
 **Result**: Clean, focused repertoire while preserving all GM annotations!
 
