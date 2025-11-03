@@ -7,6 +7,7 @@ from . import __version__
 from .config import load_config, validate_config_file
 from .builder import build, print_statistics
 from .inspector import inspect_pgn, generate_starter_config
+from .lichess import upload_pgn_to_study, authenticate, save_token, load_token
 
 
 console = Console()
@@ -153,6 +154,72 @@ def init(pgn_file, output):
     """
     try:
         generate_starter_config(pgn_file, output)
+    except Exception as e:
+        console.print(f"[red]Error:[/red] {str(e)}")
+        raise click.Abort()
+
+
+@cli.command()
+@click.argument("pgn_file", type=click.Path(exists=True))
+@click.option(
+    "--name", "-n", help="Study name (default: PGN filename)"
+)
+@click.option(
+    "--private",
+    is_flag=True,
+    help="Make study private (default: public)"
+)
+@click.option(
+    "--token",
+    help="Lichess access token (default: load from ~/.pgnc/lichess_token)"
+)
+@click.option(
+    "--auth",
+    is_flag=True,
+    help="Force re-authentication"
+)
+def upload(pgn_file, name, private, token, auth):
+    """
+    Upload PGN file to Lichess as a study.
+
+    Each game in the PGN file will become a chapter in the study.
+    Requires OAuth authentication with Lichess (will prompt if needed).
+
+    Examples:
+
+        pgnc upload my_repertoire.pgn
+
+        pgnc upload my_repertoire.pgn --name "My Opening Repertoire"
+
+        pgnc upload my_repertoire.pgn --private
+
+        pgnc upload my_repertoire.pgn --auth  # Force re-authentication
+    """
+    try:
+        visibility = "private" if private else "public"
+        
+        # Handle authentication
+        access_token = token
+        if auth or not access_token:
+            if not access_token:
+                access_token = load_token()
+            
+            if not access_token or auth:
+                console.print("\n[cyan]Authentication required[/cyan]")
+                access_token = authenticate()
+                save_token(access_token)
+        
+        # Upload
+        result = upload_pgn_to_study(
+            pgn_file,
+            study_name=name,
+            access_token=access_token,
+            visibility=visibility,
+        )
+        
+        console.print(f"\n[green]✅ Upload complete![/green]")
+        console.print(f"Study: [cyan]{result['study_url']}[/cyan]")
+        
     except Exception as e:
         console.print(f"[red]Error:[/red] {str(e)}")
         raise click.Abort()
