@@ -127,10 +127,10 @@ def _inspect_single_game(game: chess.pgn.Game, index: int, list_variations: bool
     console.print(f"[bold]Average Depth:[/bold] {avg_depth:.1f} moves")
     console.print(f"[bold]Max Depth:[/bold] {max_depth} moves\n")
 
-    # First moves
-    first_moves = _get_first_moves(game, limit=5)
+    # First moves (common moves until branching point)
+    first_moves = _get_first_moves(game, limit=50)
     if first_moves:
-        console.print("[bold]Opening moves:[/bold]")
+        console.print("[bold]Common opening moves:[/bold]")
         console.print(f"  {first_moves}\n")
 
     # List all variations if requested
@@ -161,17 +161,38 @@ def _get_max_depth(game: chess.pgn.Game) -> int:
 
 
 def _get_first_moves(game: chess.pgn.Game, limit: int = 10) -> str:
-    """Get first N moves of the main line."""
+    """
+    Get first moves until reaching a branching point (node with multiple variations).
+    
+    Shows the common/committed moves that are shared before any branching occurs.
+    Stops when encountering a node with more than 1 variation.
+    
+    Args:
+        game: Game to extract moves from
+        limit: Maximum moves to extract (safety limit)
+    
+    Returns:
+        Formatted move sequence (e.g., "1.e4 c5 2.Nf3 d6")
+    """
     board = game.board()
     moves = []
     node = game
 
     for _ in range(limit):
         if not node.variations:
+            # Reached end of game
             break
+        
+        # Continue along the main line
         node = node.variation(0)
         moves.append(board.san(node.move))
         board.push(node.move)
+        
+        # Check if current node (after the move) has multiple variations (branching point)
+        if len(node.variations) > 1:
+            # This position has multiple variations - we've reached a branching point
+            # Stop here (we've shown all common moves up to this point)
+            break
 
     # Format with move numbers
     formatted = []
