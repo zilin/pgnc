@@ -16,6 +16,7 @@ PGN Curator is a Python command-line tool that helps chess coaches and parents c
 ✅ **Fast processing** - 452K variations in <5 seconds
 ✅ **Zero data loss** - Preserves all GM annotations and comments
 ✅ **Beautiful CLI** - Rich output with statistics and progress
+✅ **Lichess integration** - Upload curated repertoires directly to Lichess studies
 
 ## 🚀 Quick Start
 
@@ -119,6 +120,53 @@ pgnc validate my_config.yaml
 
 # Generate starter config
 pgnc init classical_openings.pgn -o my_config.yaml
+
+# Upload curated PGN to Lichess study
+pgnc upload my_openings.pgn --study-id ABC123
+```
+
+## 📤 Upload to Lichess
+
+PGN Curator can upload your curated PGN files directly to Lichess studies!
+
+### Quick Setup
+
+1. **Get your Lichess API token:**
+   - Go to https://lichess.org/account/oauth/token/create
+   - Create a new token with `study:write` scope
+   - Copy the token
+
+2. **Create a study on Lichess:**
+   - Go to https://lichess.org/study
+   - Click "New Study" and create your study
+   - Note the study ID from the URL (e.g., `ABC123` from `https://lichess.org/study/ABC123`)
+
+3. **Upload your curated PGN:**
+   ```bash
+   # Save your token (optional - can use --token instead)
+   echo "YOUR_TOKEN" > ~/.pgnc/lichess_token
+   
+   # Upload to your study
+   pgnc upload my_openings.pgn --study-id ABC123
+   ```
+
+### How It Works
+
+- Each game in your PGN file becomes a chapter in the Lichess study
+- All variations, comments, and annotations are preserved
+- You can upload multiple PGN files to the same study
+- The study must exist (create it manually first on lichess.org)
+
+### Example Workflow
+
+```bash
+# 1. Curate your repertoire
+pgnc build my_config.yaml --stats
+
+# 2. Upload to Lichess (create study first on lichess.org)
+pgnc upload my_repertoire.pgn --study-id luUF5Lll
+
+# Result: All games imported as chapters in your Lichess study!
 ```
 
 ## 📦 Requirements

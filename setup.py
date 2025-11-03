@@ -15,6 +15,7 @@ setup(
         "pyyaml>=6.0",
         "pydantic>=2.0.0",
         "rich>=13.0.0",
+        "requests>=2.31.0",
     ],
     entry_points={
         "console_scripts": [
