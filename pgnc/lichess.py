@@ -112,40 +112,58 @@ class LichessClient:
         # response = self._request("POST", "/study", json=data)
         # return response.json()
 
-    def add_chapter_to_study(
-        self, study_id: str, name: str, pgn: str
-    ) -> Dict:
+    def import_pgn_to_study(self, study_id: str, pgn: str) -> Dict:
         """
-        Add a chapter to a study.
-
-        NOTE: Lichess API does not support programmatic chapter addition.
-        This method will raise an error.
+        Import PGN content to a study using the import-pgn endpoint.
 
         Args:
-            study_id: Lichess study ID
-            name: Chapter name
-            pgn: PGN content
+            study_id: Lichess study ID (must exist - create manually)
+            pgn: PGN content to import
 
         Returns:
-            Chapter data
+            Response data from import
 
         Raises:
-            ValueError: Chapter addition not supported by Lichess API
+            ValueError: If import fails
         """
-        # Lichess API does not currently support programmatic chapter addition
-        # This endpoint returns 404: POST /api/study/{id}/chapters
-        raise ValueError(
-            f"Lichess API does not support programmatic chapter addition. "
-            f"Cannot add chapters to study {study_id}. "
-            f"Chapters must be added manually on lichess.org."
-        )
+        # Lichess API endpoint: POST /api/study/{study_id}/import-pgn
+        # Uses form-encoded data with 'pgn' parameter (URL-encoded)
+        endpoint = f"/study/{study_id}/import-pgn"
         
-        # Code below is for when/if Lichess adds this feature
-        # data = {"name": name, "pgn": pgn}
-        # response = self._request(
-        #     "POST", f"/study/{study_id}/chapters", json=data
-        # )
-        # return response.json()
+        # Use form-encoded data (not JSON)
+        # requests library will handle URL encoding automatically
+        data = {"pgn": pgn}
+        
+        # Get headers but override Content-Type for form data
+        headers = self._get_headers()
+        headers["Content-Type"] = "application/x-www-form-urlencoded"
+        
+        try:
+            url = f"{self.base_url}/{endpoint.lstrip('/')}"
+            response = requests.post(url, headers=headers, data=data)
+            response.raise_for_status()
+            
+            # Try to parse JSON response, return empty dict if no content
+            if response.content:
+                try:
+                    return response.json()
+                except:
+                    return {"status": "success", "content": response.text}
+            return {}
+        except requests.HTTPError as e:
+            # Try to get error message from response
+            try:
+                error_data = response.json()
+                error_msg = error_data.get("error", {}).get("message", str(e))
+            except:
+                error_msg = str(e)
+            raise ValueError(
+                f"Failed to import PGN to study {study_id}: {error_msg}"
+            ) from e
+        except requests.RequestException as e:
+            raise ValueError(
+                f"Network error importing PGN: {str(e)}"
+            ) from e
 
 
 def generate_pkce() -> Tuple[str, str]:
@@ -401,10 +419,9 @@ def upload_pgn_to_study(
 
     # Handle study creation/selection
     if study_id:
-        # Use existing study
-        console.print(f"\n[cyan]Using existing study: {study_id}[/cyan]\n")
-        # Verify study exists by trying to get it (optional check)
-        # For now, we'll just proceed and let chapter addition fail if study doesn't exist
+        # Use existing study (required - study must exist)
+        console.print(f"\n[cyan]Importing to existing study: {study_id}[/cyan]")
+        console.print("[dim]Note: Study must exist on lichess.org (create manually)[/dim]\n")
     else:
         # Try to create study (will fail - documented limitation)
         if not study_name:
@@ -470,9 +487,9 @@ def upload_pgn_to_study(
         pgn_string = game.accept(exporter)
 
         try:
-            chapter = client.add_chapter_to_study(study_id, game_name, pgn_string)
-            chapters.append(chapter)
-            console.print(f"    [green]✓[/green] Uploaded")
+            result = client.import_pgn_to_study(study_id, pgn_string)
+            chapters.append({"name": game_name, "result": result})
+            console.print(f"    [green]✓[/green] Uploaded: {game_name}")
         except ValueError as e:
             console.print(f"    [red]✗[/red] Failed: {e}")
             # Continue with other chapters even if one fails

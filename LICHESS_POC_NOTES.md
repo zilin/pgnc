@@ -2,21 +2,20 @@
 
 ## Current Status
 
-**⚠️ FEATURE NOT VIABLE:** Lichess API does not support programmatic study operations.
+**✅ PARTIALLY WORKING:** Found working endpoint for PGN import!
 
-**Complete Limitations:**
-1. Study creation: `POST /api/study` → 404 Not Found
-2. Chapter addition: `POST /api/study/{id}/chapters` → 404 Not Found
+**API Endpoint Status:**
+1. Study creation: `POST /api/study` → ❌ 404 Not Found (must create manually)
+2. PGN import: `POST /api/study/{id}/import-pgn` → ✅ **WORKS!**
 
-Lichess does not provide API endpoints for:
-- Creating studies programmatically
-- Adding chapters to studies programmatically
+**How it works:**
+- User must create study manually on lichess.org
+- Then use `--study-id` to import PGN games as chapters
+- Each game in the PGN becomes a chapter in the study
 
-See: https://github.com/lichess-org/api/issues/224
+**This POC now works with the import-pgn endpoint!**
 
-**This POC cannot function with current Lichess API capabilities.**
-
-**Last Updated:** After confirming both endpoints fail
+**Last Updated:** After discovering import-pgn endpoint
 
 ## What's Implemented
 
@@ -71,18 +70,19 @@ If you need OAuth (for production apps or sharing), register an OAuth applicatio
 
 ## Known Limitations (POC)
 
-1. **⚠️ Study Operations Not Supported**: **CRITICAL LIMITATION**
-   - Lichess API does NOT support ANY programmatic study operations
-   - Study creation: `POST /api/study` → 404 Not Found
-   - Chapter addition: `POST /api/study/{id}/chapters` → 404 Not Found
-   - This is a known limitation: https://github.com/lichess-org/api/issues/224
-   - **This feature cannot work at all with current Lichess API**
-   - **No workarounds available** - both endpoints are missing
+1. **Study Creation Not Supported**: 
+   - Study creation: `POST /api/study` → ❌ 404 Not Found
+   - **Workaround:** Create study manually on lichess.org, then use `--study-id`
 
-2. **API Endpoints**: Both endpoints confirmed non-existent:
-   - Study creation: `POST /api/study` → **404 CONFIRMED**
-   - Chapter addition: `POST /api/study/{id}/chapters` → **404 CONFIRMED**
-   - Response structure: Cannot determine - endpoints don't exist
+2. **✅ PGN Import Works!**:
+   - PGN import: `POST /api/study/{id}/import-pgn` → ✅ **CONFIRMED WORKING**
+   - Uses form-encoded data with `pgn` parameter
+   - Each game in PGN file becomes a chapter in the study
+
+3. **API Endpoints**: 
+   - Study creation: `POST /api/study` → **404** (must create manually)
+   - PGN import: `POST /api/study/{id}/import-pgn` → **✅ WORKS**
+   - Uses `application/x-www-form-urlencoded` with `pgn` parameter
 
 2. **Token Refresh**: No token refresh mechanism (tokens may expire)
    - User must re-authenticate with `--auth` flag when token expires
@@ -97,31 +97,37 @@ If you need OAuth (for production apps or sharing), register an OAuth applicatio
 5. **OAuth Client ID**: Currently hardcoded as "pgn-curator"
    - Needs to be registered with Lichess or made configurable
 
-## Current Status: COMPLETELY NOT WORKING
+## Current Status: ✅ WORKING WITH WORKAROUND
 
-**This POC cannot function because Lichess does not provide API endpoints for ANY study operations.**
+**This POC works using the `import-pgn` endpoint!**
 
-Both endpoints return 404:
-- Study creation: `POST /api/study` → 404
-- Chapter addition: `POST /api/study/{id}/chapters` → 404
+**Requirements:**
+1. Create study manually on https://lichess.org/study
+2. Get study ID from URL (e.g., `ABC123` from `https://lichess.org/study/ABC123`)
+3. Use `--study-id` to import PGN games as chapters
 
-### Errors You'll See:
+### Usage:
+```bash
+# Get your API token from: https://lichess.org/account/oauth/token/create
+# Create study manually on lichess.org
+# Then:
+pgnc upload my_repertoire.pgn --study-id ABC123
 ```
-Failed to create study: Lichess API does not support programmatic study creation.
-Failed: Lichess API does not support programmatic chapter addition.
-```
 
-## No Workarounds Available
+### How it Works:
+- Each game in the PGN file is imported as a separate chapter
+- Uses `POST /api/study/{id}/import-pgn` endpoint
+- PGN content is form-encoded and sent to Lichess
 
-1. ~~Manual Study Creation + Chapter Addition~~ - Chapter addition also fails
-2. **Web Scraping / Selenium** - Not recommended (violates ToS, fragile, breaks easily)
-3. **Wait for Lichess API Update** - Only viable option
-   - Monitor: https://github.com/lichess-org/api/issues/224
-   - When/if Lichess adds study/chapter API endpoints, this POC will work
+## Limitation
+
+- Study must be created manually (no API endpoint for study creation)
+- This is acceptable - creating a study is a one-time step
+- Once created, you can import multiple PGN files to it
 
 ## Conclusion
 
-This feature is **not implementable** with the current Lichess API. The code structure is in place, but both required endpoints are missing from the Lichess API. This POC serves as documentation of what would be needed when/if Lichess adds these capabilities.
+This feature **works** with the `import-pgn` endpoint! Users create the study once manually, then can import curated PGN files programmatically.
 
 ## Next Steps for Production
 

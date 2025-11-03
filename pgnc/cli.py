@@ -186,8 +186,9 @@ def init(pgn_file, output):
 )
 @click.option(
     "--study-id",
-    help="Existing study ID (workaround - Lichess API doesn't support study creation). "
-         "Get this from your study URL on lichess.org"
+    required=True,
+    help="Existing study ID (REQUIRED - create study manually on lichess.org first). "
+         "Get this from your study URL (e.g., 'ABC123' from https://lichess.org/study/ABC123)"
 )
 def upload(pgn_file, name, private, token, auth, oauth, study_id):
     """
@@ -198,21 +199,26 @@ def upload(pgn_file, name, private, token, auth, oauth, study_id):
     Authentication: Uses personal API token by default (simpler). Get your token from:
     https://lichess.org/account/oauth/token/create
     
-    IMPORTANT: Lichess API does not support programmatic study creation.
-    Use --study-id with an existing study ID, or create study manually first.
+    IMPORTANT: Lichess API requires study to exist (create manually first).
+    Use --study-id with an existing study ID from lichess.org.
 
     Examples:
 
-        # Workaround: Upload to existing study
+        # Upload PGN games as chapters to existing study
         pgnc upload my_repertoire.pgn --study-id ABC123
 
         pgnc upload my_repertoire.pgn --study-id ABC123 --token YOUR_TOKEN
-
-        # Will fail (study creation not supported by Lichess API)
-        pgnc upload my_repertoire.pgn --name "My Opening Repertoire"
     """
     try:
         visibility = "private" if private else "public"
+        
+        # Validate study_id is provided
+        if not study_id:
+            console.print("[red]✗ Error: --study-id is required[/red]")
+            console.print("\n[cyan]How to get a study ID:[/cyan]")
+            console.print("1. Create a study manually on https://lichess.org/study")
+            console.print("2. Get the ID from the URL (e.g., 'ABC123' from https://lichess.org/study/ABC123)\n")
+            raise click.Abort()
         
         # Handle authentication
         access_token = token
