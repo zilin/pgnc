@@ -247,12 +247,15 @@ def copy_headers(src_game: chess.pgn.Game, dst_game: chess.pgn.Game):
 def count_variations(game: chess.pgn.Game) -> int:
     """
     Count total number of variations in a game.
+    
+    A variation is defined as a unique path from the root node to a leaf node.
+    This counts the number of leaf nodes in the game tree.
 
     Args:
         game: Game to count variations in
 
     Returns:
-        Total number of variations
+        Total number of variations (leaf nodes)
     """
     if game is None:
         return 0
@@ -261,8 +264,13 @@ def count_variations(game: chess.pgn.Game) -> int:
 
     def traverse(node):
         nonlocal count
-        for variation in node.variations:
+        if not list(node.variations):
+            # Leaf node - this is a complete variation
             count += 1
+            return
+        
+        # Recurse into all variations
+        for variation in node.variations:
             traverse(variation)
 
     traverse(game)
