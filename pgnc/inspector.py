@@ -144,7 +144,7 @@ def _inspect_single_game(game: chess.pgn.Game, index: int, list_variations: bool
             # Color the variation index and move numbers differently
             colored_moves = _color_move_sequence(moves_san)
             console.print(
-                f"  [cyan]{i}:[/cyan] {colored_moves} [dim](depth: {depth})[/dim]"
+                f"  [cyan]{i}:[/cyan] [reset]{colored_moves}[/reset] [dim](depth: {depth})[/dim]"
             )
 
 
