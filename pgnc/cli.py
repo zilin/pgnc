@@ -7,7 +7,7 @@ from . import __version__
 from .config import load_config, validate_config_file
 from .builder import build, print_statistics
 from .inspector import inspect_pgn, generate_starter_config
-from .lichess import upload_pgn_to_study, authenticate, save_token, load_token
+from .lichess import upload_pgn_to_study, save_token, load_token
 
 
 console = Console()
@@ -175,22 +175,12 @@ def init(pgn_file, output):
          "Get your token from https://lichess.org/account/oauth/token/create"
 )
 @click.option(
-    "--auth",
-    is_flag=True,
-    help="Force re-authentication via OAuth (requires registered OAuth app)"
-)
-@click.option(
-    "--oauth",
-    is_flag=True,
-    help="Use OAuth flow instead of personal API token"
-)
-@click.option(
     "--study-id",
     required=True,
     help="Existing study ID (REQUIRED - create study manually on lichess.org first). "
          "Get this from your study URL (e.g., 'ABC123' from https://lichess.org/study/ABC123)"
 )
-def upload(pgn_file, name, private, token, auth, oauth, study_id):
+def upload(pgn_file, name, private, token, study_id):
     """
     Upload PGN file to Lichess as a study.
 
@@ -221,38 +211,29 @@ def upload(pgn_file, name, private, token, auth, oauth, study_id):
             raise click.Abort()
         
         # Handle authentication
-        access_token = token
-        use_oauth = oauth or auth  # Use OAuth if explicitly requested
+        api_token = token
+        if not api_token:
+            api_token = load_token()
         
-        if not access_token:
-            access_token = load_token()
-        
-        if not access_token or (auth and use_oauth):
-            if use_oauth:
-                console.print("\n[cyan]Starting OAuth authentication...[/cyan]")
-                console.print("[yellow]Note: OAuth requires a registered app with Lichess.[/yellow]")
-                console.print("[yellow]For personal use, consider using a personal API token instead.[/yellow]\n")
-                access_token = authenticate()
-            else:
-                console.print("\n[cyan]Personal API token required[/cyan]")
-                console.print("\nGet your token from:")
-                console.print("[cyan]https://lichess.org/account/oauth/token/create[/cyan]\n")
-                console.print("Then either:")
-                console.print("  1. Use --token YOUR_TOKEN option")
-                console.print("  2. Save to ~/.pgnc/lichess_token file\n")
-                provided_token = Prompt.ask("Enter your Lichess API token", default="")
-                if not provided_token:
-                    console.print("[red]✗ No token provided. Aborting.[/red]")
-                    raise click.Abort()
-                access_token = provided_token
-            
-            save_token(access_token)
+        if not api_token:
+            console.print("\n[cyan]Personal API token required[/cyan]")
+            console.print("\nGet your token from:")
+            console.print("[cyan]https://lichess.org/account/oauth/token/create[/cyan]\n")
+            console.print("Then either:")
+            console.print("  1. Use --token YOUR_TOKEN option")
+            console.print("  2. Save to ~/.pgnc/lichess_token file\n")
+            provided_token = Prompt.ask("Enter your Lichess API token", default="")
+            if not provided_token:
+                console.print("[red]✗ No token provided. Aborting.[/red]")
+                raise click.Abort()
+            api_token = provided_token
+            save_token(api_token)
         
         # Upload
         result = upload_pgn_to_study(
             pgn_file,
             study_name=name,
-            api_token=access_token,
+            api_token=api_token,
             visibility=visibility,
             study_id=study_id,
         )

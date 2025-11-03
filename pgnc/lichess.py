@@ -1,13 +1,7 @@
 """Lichess API integration for uploading studies."""
 
 import os
-import json
-import secrets
-import hashlib
-import base64
-import webbrowser
-import urllib.parse
-from typing import Optional, Dict, List, Tuple
+from typing import Optional, Dict
 from pathlib import Path
 
 import requests
@@ -20,25 +14,19 @@ console = Console()
 
 # Lichess API endpoints
 LICHESS_API_BASE = "https://lichess.org/api"
-LICHESS_OAUTH_BASE = "https://lichess.org/oauth"
-
-# OAuth configuration
-OAUTH_SCOPES = ["study:write"]  # Permissions needed
 
 
 class LichessClient:
     """Client for interacting with Lichess API."""
 
-    def __init__(self, access_token: Optional[str] = None, api_token: Optional[str] = None):
+    def __init__(self, api_token: str):
         """
         Initialize Lichess client.
 
         Args:
-            access_token: OAuth access token (if using OAuth)
-            api_token: Personal API token (alternative to OAuth, simpler for personal use)
+            api_token: Personal API token from lichess.org/account/oauth/token/create
         """
-        # Prefer API token if provided (simpler for personal use)
-        self.access_token = api_token or access_token
+        self.access_token = api_token
         self.base_url = LICHESS_API_BASE
 
     def _get_headers(self) -> Dict[str, str]:
@@ -82,35 +70,6 @@ class LichessClient:
         """Get account information."""
         return self._request("GET", "/account").json()
 
-    def create_study(self, name: str, visibility: str = "public") -> Dict:
-        """
-        Create a new study.
-
-        NOTE: Lichess currently does not support programmatic study creation via API.
-        This method will raise an error. See LICHESS_POC_NOTES.md for alternatives.
-
-        Args:
-            name: Study name
-            visibility: "public" or "private"
-
-        Returns:
-            Study data with ID
-
-        Raises:
-            ValueError: Study creation not supported by Lichess API
-        """
-        # Lichess API does not currently support programmatic study creation
-        # This is a known limitation: https://github.com/lichess-org/api/issues/224
-        raise ValueError(
-            "Lichess API does not support programmatic study creation. "
-            "Studies must be created manually on lichess.org. "
-            "See LICHESS_POC_NOTES.md for workarounds and alternatives."
-        )
-        
-        # Code below is for when/if Lichess adds this feature
-        # data = {"name": name, "visibility": visibility}
-        # response = self._request("POST", "/study", json=data)
-        # return response.json()
 
     def import_pgn_to_study(self, study_id: str, pgn: str) -> Dict:
         """
@@ -166,149 +125,6 @@ class LichessClient:
             ) from e
 
 
-def generate_pkce() -> Tuple[str, str]:
-    """
-    Generate PKCE code verifier and challenge for OAuth flow.
-
-    Returns:
-        Tuple of (code_verifier, code_challenge)
-    """
-    # Generate random code verifier
-    code_verifier = base64.urlsafe_b64encode(
-        secrets.token_bytes(32)
-    ).decode("utf-8").rstrip("=")
-
-    # Generate code challenge (SHA256 hash, base64url encoded)
-    code_challenge = (
-        base64.urlsafe_b64encode(
-            hashlib.sha256(code_verifier.encode()).digest()
-        )
-        .decode("utf-8")
-        .rstrip("=")
-    )
-
-    return code_verifier, code_challenge
-
-
-def get_oauth_url(code_challenge: str, state: str) -> str:
-    """
-    Generate OAuth authorization URL.
-
-    Args:
-        code_challenge: PKCE code challenge
-        state: OAuth state parameter
-
-    Returns:
-        Authorization URL
-    """
-    params = {
-        "response_type": "code",
-        "client_id": "pgn-curator",  # This should be registered with Lichess
-        "redirect_uri": "http://localhost:8080/oauth/callback",
-        "code_challenge": code_challenge,
-        "code_challenge_method": "S256",
-        "scope": " ".join(OAUTH_SCOPES),
-        "state": state,
-    }
-
-    return f"{LICHESS_OAUTH_BASE}/authorize?" + urllib.parse.urlencode(params)
-
-
-def exchange_code_for_token(
-    code: str, code_verifier: str, redirect_uri: str
-) -> Dict:
-    """
-    Exchange authorization code for access token.
-
-    Args:
-        code: Authorization code from OAuth callback
-        code_verifier: PKCE code verifier
-        redirect_uri: OAuth redirect URI
-
-    Returns:
-        Token response with access_token
-
-    Raises:
-        ValueError: If token exchange fails
-    """
-    data = {
-        "grant_type": "authorization_code",
-        "code": code,
-        "code_verifier": code_verifier,
-        "redirect_uri": redirect_uri,
-        "client_id": "pgn-curator",
-    }
-
-    try:
-        response = requests.post(
-            f"{LICHESS_OAUTH_BASE}/token",
-            data=data,
-            headers={"Content-Type": "application/x-www-form-urlencoded"},
-            timeout=30,
-        )
-        response.raise_for_status()
-        return response.json()
-    except requests.HTTPError as e:
-        try:
-            error_data = response.json()
-            error_msg = error_data.get("error", {}).get("message", str(e))
-        except:
-            error_msg = str(e)
-        raise ValueError(f"Token exchange failed: {error_msg}") from e
-    except requests.RequestException as e:
-        raise ValueError(f"Network error during token exchange: {str(e)}") from e
-
-
-def authenticate() -> str:
-    """
-    Perform OAuth2 authentication flow.
-
-    Returns:
-        Access token
-    """
-    console.print("[cyan]Starting OAuth authentication with Lichess...[/cyan]\n")
-
-    # Generate PKCE values
-    code_verifier, code_challenge = generate_pkce()
-    state = secrets.token_urlsafe(32)
-
-    # Get authorization URL
-    auth_url = get_oauth_url(code_challenge, state)
-    console.print(f"Opening browser for authentication...")
-    console.print(f"[dim]URL: {auth_url}[/dim]\n")
-
-    # Open browser
-    try:
-        webbrowser.open(auth_url)
-    except Exception:
-        console.print(
-            "[yellow]Could not open browser automatically.[/yellow]"
-        )
-        console.print(f"Please visit: {auth_url}\n")
-
-    # Get authorization code from user
-    console.print(
-        "After authorizing, you'll be redirected to a localhost URL.\n"
-        "Copy the 'code' parameter from the redirect URL.\n"
-    )
-    code = Prompt.ask("Enter authorization code")
-
-    # Exchange code for token
-    console.print("\n[cyan]Exchanging code for access token...[/cyan]")
-    token_response = exchange_code_for_token(
-        code, code_verifier, "http://localhost:8080/oauth/callback"
-    )
-
-    access_token = token_response.get("access_token")
-    if access_token:
-        console.print("[green]✓ Authentication successful![/green]\n")
-    else:
-        console.print("[red]✗ Failed to get access token[/red]")
-        raise ValueError("No access token in response")
-
-    return access_token
-
-
 def save_token(token: str, token_file: Optional[str] = None):
     """
     Save access token to file.
@@ -355,42 +171,45 @@ def load_token(token_file: Optional[str] = None) -> Optional[str]:
 def upload_pgn_to_study(
     pgn_path: str,
     study_name: Optional[str] = None,
-    access_token: Optional[str] = None,
     api_token: Optional[str] = None,
     visibility: str = "public",
     study_id: Optional[str] = None,
 ) -> Dict:
     """
-    Upload PGN file to Lichess as a study.
+    Upload PGN file to Lichess study using import-pgn endpoint.
 
     Args:
         pgn_path: Path to PGN file
-        study_name: Name for the study (default: filename)
-        access_token: OAuth access token (deprecated, use api_token)
-        api_token: Personal API token (preferred, simpler)
-        visibility: "public" or "private"
-        study_id: Optional existing study ID (workaround - use existing study instead of creating new)
+        study_name: Name for the study (default: filename, not used if study_id provided)
+        api_token: Personal API token from lichess.org/account/oauth/token/create
+        visibility: "public" or "private" (not used - study must exist)
+        study_id: Existing study ID (REQUIRED - study must be created manually on lichess.org)
 
     Returns:
-        Study information with ID
+        Study information with ID and URL
 
     Note:
-        Lichess API does not support programmatic study creation.
-        Either provide an existing study_id, or create study manually first.
+        Study must exist on lichess.org (create manually first).
+        Each game in the PGN file will be imported as a chapter.
     """
     # Load token if not provided
-    token = api_token or access_token
-    if not token:
-        token = load_token()
+    if not api_token:
+        api_token = load_token()
     
-    if not token:
+    if not api_token:
         raise ValueError(
             "No API token found. Get your token from "
             "https://lichess.org/account/oauth/token/create"
         )
 
-    # Initialize client (pass token as api_token for personal tokens)
-    client = LichessClient(api_token=token)
+    if not study_id:
+        raise ValueError(
+            "Study ID is required. Create a study manually on lichess.org "
+            "and provide the study ID from the URL."
+        )
+
+    # Initialize client
+    client = LichessClient(api_token=api_token)
 
     # Verify authentication
     try:
@@ -417,53 +236,9 @@ def upload_pgn_to_study(
     if not games:
         raise ValueError(f"No games found in {pgn_path}")
 
-    # Handle study creation/selection
-    if study_id:
-        # Use existing study (required - study must exist)
-        console.print(f"\n[cyan]Importing to existing study: {study_id}[/cyan]")
-        console.print("[dim]Note: Study must exist on lichess.org (create manually)[/dim]\n")
-    else:
-        # Try to create study (will fail - documented limitation)
-        if not study_name:
-            study_name = Path(pgn_path).stem.replace("_", " ").title()
-        
-        study_name = study_name.strip()[:100]
-        if not study_name:
-            study_name = "Untitled Study"
-
-        console.print(f"\n[cyan]Attempting to create study: {study_name}[/cyan]")
-        console.print(
-            "[yellow]⚠ Note: Lichess API does not support programmatic study creation.[/yellow]"
-        )
-        console.print(
-            "[yellow]   Please create a study manually on lichess.org and use --study-id option.[/yellow]\n"
-        )
-        
-        try:
-            study = client.create_study(study_name, visibility=visibility)
-        except ValueError as e:
-            # This is the expected error - provide helpful guidance
-            console.print(f"[red]✗ {str(e)}[/red]\n")
-            console.print("[cyan]Workaround:[/cyan]")
-            console.print("1. Create a study manually on https://lichess.org/study")
-            console.print("2. Get the study ID from the URL (e.g., study ID from https://lichess.org/study/ABC123)")
-            console.print("3. Use: pgnc upload your_file.pgn --study-id ABC123\n")
-            raise
-        except Exception as e:
-            raise ValueError(f"Failed to create study: {str(e)}") from e
-            
-        # Extract study ID (if creation somehow succeeded)
-        study_id = (
-            study.get("id") 
-            or study.get("studyId") 
-            or study.get("data", {}).get("id")
-        )
-        if not study_id:
-            raise ValueError(
-                f"Failed to get study ID from response. Response: {study}"
-            )
-
-        console.print(f"[green]✓ Study created: {study_id}[/green]\n")
+    # Use existing study (required - study must exist)
+    console.print(f"\n[cyan]Importing to existing study: {study_id}[/cyan]")
+    console.print("[dim]Note: Study must exist on lichess.org (create manually)[/dim]\n")
 
     # Upload each game as a chapter
     console.print(f"[cyan]Uploading {len(games)} game(s) as chapters...[/cyan]\n")
