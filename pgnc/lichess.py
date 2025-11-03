@@ -47,14 +47,34 @@ class LichessClient:
         return headers
 
     def _request(self, method: str, endpoint: str, **kwargs) -> requests.Response:
-        """Make authenticated API request."""
+        """
+        Make authenticated API request.
+        
+        Raises:
+            requests.HTTPError: If API request fails
+            ValueError: If not authenticated
+        """
+        if not self.access_token:
+            raise ValueError("Not authenticated. Please run 'pgnc upload --auth' first.")
+            
         url = f"{self.base_url}/{endpoint.lstrip('/')}"
         headers = self._get_headers()
         headers.update(kwargs.pop("headers", {}))
 
-        response = requests.request(method, url, headers=headers, **kwargs)
-        response.raise_for_status()
-        return response
+        try:
+            response = requests.request(method, url, headers=headers, **kwargs)
+            response.raise_for_status()
+            return response
+        except requests.HTTPError as e:
+            # Try to get error message from response
+            try:
+                error_data = response.json()
+                error_msg = error_data.get("error", {}).get("message", str(e))
+            except:
+                error_msg = str(e)
+            raise ValueError(f"Lichess API error: {error_msg}") from e
+        except requests.RequestException as e:
+            raise ValueError(f"Network error: {str(e)}") from e
 
     def get_account(self) -> Dict:
         """Get account information."""
@@ -158,6 +178,9 @@ def exchange_code_for_token(
 
     Returns:
         Token response with access_token
+
+    Raises:
+        ValueError: If token exchange fails
     """
     data = {
         "grant_type": "authorization_code",
@@ -167,13 +190,24 @@ def exchange_code_for_token(
         "client_id": "pgn-curator",
     }
 
-    response = requests.post(
-        f"{LICHESS_OAUTH_BASE}/token",
-        data=data,
-        headers={"Content-Type": "application/x-www-form-urlencoded"},
-    )
-    response.raise_for_status()
-    return response.json()
+    try:
+        response = requests.post(
+            f"{LICHESS_OAUTH_BASE}/token",
+            data=data,
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            timeout=30,
+        )
+        response.raise_for_status()
+        return response.json()
+    except requests.HTTPError as e:
+        try:
+            error_data = response.json()
+            error_msg = error_data.get("error", {}).get("message", str(e))
+        except:
+            error_msg = str(e)
+        raise ValueError(f"Token exchange failed: {error_msg}") from e
+    except requests.RequestException as e:
+        raise ValueError(f"Network error during token exchange: {str(e)}") from e
 
 
 def authenticate() -> str:
@@ -306,9 +340,19 @@ def upload_pgn_to_study(
         console.print(f"[red]✗ Authentication failed: {e}[/red]")
         raise
 
+    # Validate PGN file
+    if not os.path.exists(pgn_path):
+        raise FileNotFoundError(f"PGN file not found: {pgn_path}")
+    
+    if not pgn_path.endswith(".pgn"):
+        raise ValueError(f"File must be a PGN file: {pgn_path}")
+
     # Parse PGN file
     console.print(f"[cyan]Reading PGN file: {pgn_path}[/cyan]")
-    games = parse_pgn(pgn_path)
+    try:
+        games = parse_pgn(pgn_path)
+    except Exception as e:
+        raise ValueError(f"Failed to parse PGN file: {str(e)}") from e
 
     if not games:
         raise ValueError(f"No games found in {pgn_path}")
@@ -316,13 +360,31 @@ def upload_pgn_to_study(
     # Determine study name
     if not study_name:
         study_name = Path(pgn_path).stem.replace("_", " ").title()
+    
+    # Sanitize study name (Lichess may have restrictions)
+    # Remove or replace invalid characters
+    study_name = study_name.strip()[:100]  # Limit length
+    
+    if not study_name:
+        study_name = "Untitled Study"
 
     # Create study
     console.print(f"\n[cyan]Creating study: {study_name}[/cyan]")
-    study = client.create_study(study_name, visibility=visibility)
-    study_id = study.get("id") or study.get("studyId")
+    try:
+        study = client.create_study(study_name, visibility=visibility)
+    except Exception as e:
+        raise ValueError(f"Failed to create study: {str(e)}") from e
+        
+    # Extract study ID (Lichess may return different formats)
+    study_id = (
+        study.get("id") 
+        or study.get("studyId") 
+        or study.get("data", {}).get("id")
+    )
     if not study_id:
-        raise ValueError("Failed to get study ID from response")
+        raise ValueError(
+            f"Failed to get study ID from response. Response: {study}"
+        )
 
     console.print(f"[green]✓ Study created: {study_id}[/green]\n")
 
@@ -351,8 +413,13 @@ def upload_pgn_to_study(
             chapter = client.add_chapter_to_study(study_id, game_name, pgn_string)
             chapters.append(chapter)
             console.print(f"    [green]✓[/green] Uploaded")
-        except Exception as e:
+        except ValueError as e:
             console.print(f"    [red]✗[/red] Failed: {e}")
+            # Continue with other chapters even if one fails
+            continue
+        except Exception as e:
+            console.print(f"    [red]✗[/red] Unexpected error: {e}")
+            continue
 
     study_url = f"https://lichess.org/study/{study_id}"
     console.print(f"\n[green]✓ Upload complete![/green]")
