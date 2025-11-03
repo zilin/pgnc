@@ -137,7 +137,7 @@ def _inspect_single_game(game: chess.pgn.Game, index: int, list_variations: bool
 
     # List all variations if requested
     if list_variations:
-        console.print("[bold]All Variations:[/bold]\n")
+        console.print("[bold]All Variations:[/bold]")
         variations_list = _extract_all_variations(game)
 
         for i, (moves_san, depth) in enumerate(variations_list, 1):
