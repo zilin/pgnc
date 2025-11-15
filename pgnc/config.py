@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Dict, Any, List
 from pydantic import ValidationError
 
-from .models import Config, Game
+from .models import Config, ColorConfig, Game
 from .utils import parse_range_string
 
 
@@ -47,52 +47,49 @@ def load_config(config_path: str) -> Config:
             f"Config validation failed for {config_path}:\n{format_validation_error(e)}"
         )
 
-    # Expand shorthand syntax (skip/include) into games list if needed
-    config = expand_shorthand(config)
+    # Expand shorthand syntax (skip/include) for each color config
+    for color_config in config.configs:
+        expand_shorthand_for_color(color_config)
 
     return config
 
 
-def expand_shorthand(config: Config) -> Config:
+def expand_shorthand_for_color(color_config: ColorConfig) -> None:
     """
-    Expand shorthand 'skip' or 'include' fields into full games list.
+    Expand shorthand 'skip' or 'include' fields into full games list for a color config.
     Can be mixed with detailed games list for per-game control.
+    Modifies the color_config in place.
 
     Args:
-        config: Config object (may have skip/include fields)
-
-    Returns:
-        Config object with expanded games list
+        color_config: ColorConfig object (may have skip/include fields)
     """
     # Convert games list to 0-based if it exists
-    if config.games:
-        for game in config.games:
+    if color_config.games:
+        for game in color_config.games:
             game.index = game.index - 1  # Convert to 0-based
 
     # If only games list (no shorthand), we're done
-    if config.games and not config.skip and not config.include:
-        return config
+    if color_config.games and not color_config.skip and not color_config.include:
+        return
 
     # Parse shorthand ranges and store for later expansion
-    if config.skip:
+    if color_config.skip:
         try:
-            skip_indices = parse_range_string(config.skip)
+            skip_indices = parse_range_string(color_config.skip)
             # Store as metadata for later expansion (keep as 1-based for now)
-            config._skip_indices = skip_indices
-            config._use_skip = True
+            color_config._skip_indices = skip_indices
+            color_config._use_skip = True
         except ValueError as e:
-            raise ValueError(f"Invalid 'skip' syntax: {e}")
+            raise ValueError(f"Color '{color_config.color}': Invalid 'skip' syntax: {e}")
 
-    if config.include:
+    if color_config.include:
         try:
-            include_indices = parse_range_string(config.include)
+            include_indices = parse_range_string(color_config.include)
             # Store as metadata for later expansion (keep as 1-based for now)
-            config._include_indices = include_indices
-            config._use_include = True
+            color_config._include_indices = include_indices
+            color_config._use_include = True
         except ValueError as e:
-            raise ValueError(f"Invalid 'include' syntax: {e}")
-
-    return config
+            raise ValueError(f"Color '{color_config.color}': Invalid 'include' syntax: {e}")
 
 
 def format_validation_error(error: ValidationError) -> str:
@@ -130,37 +127,39 @@ def validate_config_file(config_path: str) -> tuple[bool, str]:
         messages = [
             "✓ Config syntax valid",
             f"✓ Source file exists: {config.source}",
-            f"✓ Output path valid: {config.output}",
+            f"✓ Output prefix: {config.output}",
+            f"✓ {len(config.configs)} color configuration(s)",
         ]
 
-        # Show game selection method
-        if config.skip:
-            messages.append(f"✓ Using 'skip' shorthand: {config.skip}")
-        elif config.include:
-            messages.append(f"✓ Using 'include' shorthand: {config.include}")
+        # Show details for each color config
+        for color_config in config.configs:
+            messages.append(f"\n  [{color_config.color.upper()}]")
 
-        if config.games:
-            messages.append(f"✓ {len(config.games)} game(s) with detailed config")
+            # Show game selection method
+            if color_config.skip:
+                messages.append(f"  ✓ Using 'skip' shorthand: {color_config.skip}")
+            elif color_config.include:
+                messages.append(f"  ✓ Using 'include' shorthand: {color_config.include}")
 
-        if config.settings.max_depth:
-            messages.append(f"✓ Global max depth: {config.settings.max_depth} moves")
+            if color_config.games:
+                messages.append(f"  ✓ {len(color_config.games)} game(s) with detailed config")
 
-        # Count filters (only if games list exists)
-        skip_count = 0
-        keep_count = 0
-        if config.games:
-            skip_count = sum(len(g.skip_variations or []) for g in config.games)
-            keep_count = sum(len(g.keep_variations or []) for g in config.games)
+            # Count filters (only if games list exists)
+            skip_count = 0
+            keep_count = 0
+            if color_config.games:
+                skip_count = sum(len(g.skip_variations or []) for g in color_config.games)
+                keep_count = sum(len(g.keep_variations or []) for g in color_config.games)
 
-        if skip_count > 0:
-            messages.append(f"✓ {skip_count} variation skip filter(s) defined")
-        if keep_count > 0:
-            messages.append(f"✓ {keep_count} variation keep filter(s) defined")
+            if skip_count > 0:
+                messages.append(f"  ✓ {skip_count} variation skip filter(s) defined")
+            if keep_count > 0:
+                messages.append(f"  ✓ {keep_count} variation keep filter(s) defined")
 
-        if config.plan_comments:
-            messages.append(f"✓ {len(config.plan_comments)} plan comment(s) to add")
+            if color_config.plan_comments:
+                messages.append(f"  ✓ {len(color_config.plan_comments)} plan comment(s) to add")
 
-        messages.append("✅ Configuration is valid!")
+        messages.append("\n✅ Configuration is valid!")
 
         return True, "\n".join(messages)
 

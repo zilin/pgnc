@@ -34,7 +34,13 @@ def cli():
 @click.option(
     "--output", "-o", type=click.Path(), help="Override output path from config"
 )
-def build_cmd(config_file, dry_run, verbose, quiet, stats, output):
+@click.option(
+    "--depth", "-d", type=int, default=10, help="Number of move pairs to include (default: 10)"
+)
+@click.option(
+    "--split", is_flag=True, help="Save each game in a separate file"
+)
+def build_cmd(config_file, dry_run, verbose, quiet, stats, output, depth, split):
     """
     Build curated PGN from configuration file.
 
@@ -58,26 +64,29 @@ def build_cmd(config_file, dry_run, verbose, quiet, stats, output):
         if not quiet:
             console.print(f"\n[cyan]Reading config:[/cyan] {config_file}")
             console.print(f"[cyan]Source PGN:[/cyan] {config.source}")
-            console.print(f"[cyan]Output PGN:[/cyan] {config.output}")
+            console.print(f"[cyan]Output prefix:[/cyan] {config.output}")
+            console.print(f"[cyan]Depth:[/cyan] {depth} move pairs")
+            console.print(f"[cyan]Colors:[/cyan] {', '.join([c.color for c in config.configs])}")
 
             if dry_run:
                 console.print("[yellow][DRY RUN MODE][/yellow]")
 
         # Execute build
-        build_stats = build(config, dry_run=dry_run, verbose=verbose or stats)
+        build_stats = build(config, dry_run=dry_run, verbose=verbose or stats, depth=depth, split=split)
 
         # Show statistics
-        if stats or verbose:
+        if stats:
             print_statistics(build_stats)
 
         # Success message
         if not quiet and not dry_run:
             console.print(f"\n[green]✅ Done![/green]")
-            console.print(f"\nCreated: {config.output}")
-            console.print(
-                f"  {build_stats.output_variations} variations, "
-                f"avg depth {build_stats.output_avg_depth:.1f} moves"
-            )
+            console.print(f"\nCreated {build_stats.total_output_games} game(s) in {len(build_stats.color_stats)} color(s):")
+            for color, color_stats in build_stats.color_stats.items():
+                console.print(f"  [{color}] {color_stats.output_variations} variations, "
+                             f"avg depth {color_stats.output_avg_depth:.1f} moves")
+                for filename in color_stats.output_files:
+                    console.print(f"    - {filename}")
 
     except Exception as e:
         console.print(f"[red]Error:[/red] {str(e)}")

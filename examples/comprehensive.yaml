@@ -1,42 +1,50 @@
 # Comprehensive Example Configuration
-# This shows all available features of PGN Curator
+# This shows all available features of PGN Curator including both white and black repertoires
 
 name: "My Comprehensive Repertoire"
-description: "Complete example with all features"
+description: "Complete example with both colors"
 version: "1.0"
 source: classical_openings.pgn
-output: my_complete_repertoire.pgn
+output: my_complete_repertoire  # Output prefix
 
-settings:
-  max_depth: 14  # Trim all variations to 14 moves
-  preserve_comments: true  # Keep all annotations
-  preserve_headers: true  # Keep PGN headers
-  add_curation_comment: true  # Add metadata about curation
-  remove_empty_games: false  # Keep games even if no variations remain
+# Color-specific configurations
+configs:
+  # White repertoire
+  - color: white
+    include: "1"  # Include specific games for white
+    settings:
+      preserve_comments: true
+      preserve_headers: true
+      add_curation_comment: true
+      remove_empty_games: false
+    games:
+      - index: 1
+        action: include
+        name: "Against Sicilian"
+        max_depth: 14  # Override calculated depth (in half-moves)
+        skip_variations:
+          - moves: "2... e6 3. d4"
+            reason: "Not in our repertoire"
 
-# Shorthand syntax for game selection
-include: "1"  # Include the Sicilian Najdorf
+  # Black repertoire
+  - color: black
+    include: "2"  # Different games for black
+    settings:
+      preserve_comments: true
+      preserve_headers: true
+      add_curation_comment: true
+      remove_empty_games: false
+    games:
+      - index: 2
+        action: include
+        name: "Sicilian Defense: Najdorf Variation"
+        max_depth: 14  # Override for this game
+        skip_variations:
+          - moves: "6... e5 7. Nde2 Be7 7... b5 8. Nd5"
+            reason: "Too complex for now"
 
-# Detailed configuration for specific games
-games:
-  - index: 1
-    action: include
-    name: "Sicilian Defense: Najdorf Variation"
-    max_depth: 14  # Override global setting for this game
-    
-    # Skip specific variations we don't want
-    skip_variations:
-      - moves: "6... e5 7. Nde2 Be7 7... b5 8. Nd5"
-        reason: "This line is too complex for now"
-      
-      - moves: "6... e6 7. Bg2 Be7"
-        reason: "Not part of our opening repertoire"
-
-# Plan comments to add at specific positions
-# (Optional - uncomment to use)
-# plan_comments:
-#   - variation: "1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 a6 6. g3"
-#     comment: "Sicilian Defense with g3 system"
-#     at_move: 14
-#     replace: false
+# Note: Depth is controlled by --depth flag (default: 10 move pairs)
+# Final output will be: {output}_{color}_{depth}.pgn
+# For white with --depth 10: my_complete_repertoire_white_10.pgn (21 half-moves)
+# For black with --depth 10: my_complete_repertoire_black_10.pgn (20 half-moves)
 

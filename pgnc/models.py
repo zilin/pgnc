@@ -37,7 +37,7 @@ class Game(BaseModel):
         None, description="Variations to keep (whitelist approach)"
     )
     max_depth: Optional[int] = Field(
-        None, ge=1, description="Override global max_depth for this game"
+        None, ge=1, description="Override calculated max_depth for this game (in half-moves)"
     )
     min_depth: Optional[int] = Field(None, ge=0, description="Minimum variation depth")
 
@@ -53,11 +53,8 @@ class Game(BaseModel):
 
 
 class Settings(BaseModel):
-    """Global settings for curation."""
+    """Per-color settings for curation."""
 
-    max_depth: Optional[int] = Field(
-        None, ge=1, description="Maximum moves per variation"
-    )
     min_depth: int = Field(0, ge=0, description="Minimum moves to keep variation")
     preserve_comments: bool = Field(
         True, description="Preserve all annotations and comments"
@@ -95,18 +92,15 @@ class Importance(BaseModel):
     rare: Optional[List[str]] = Field(None, description="Rare/optional move sequences")
 
 
-class Config(BaseModel):
-    """Complete configuration for PGN curation."""
+class ColorConfig(BaseModel):
+    """Configuration for a specific color repertoire."""
 
-    name: str = Field(..., description="Configuration name")
-    version: Optional[str] = Field(None, description="Version for tracking")
-    created: Optional[str] = Field(None, description="Creation date")
-    description: Optional[str] = Field(
-        None, description="Description of this configuration"
+    color: Literal["white", "black"] = Field(
+        ..., description="Repertoire color (white or black)"
     )
-    source: str = Field(..., description="Source PGN file path")
-    output: str = Field(..., description="Output PGN file path")
-    settings: Settings = Field(..., description="Global settings")
+    settings: Settings = Field(
+        default_factory=Settings, description="Settings for this color"
+    )
     games: Optional[List[Game]] = Field(
         None, description="Game selection and filtering (detailed)"
     )
@@ -127,6 +121,42 @@ class Config(BaseModel):
         None, description="Plan comments to add/override"
     )
 
+    @model_validator(mode="after")
+    def validate_game_specification(self):
+        """Validate game specification and mutual exclusions."""
+        # Must specify either games, skip, or include
+        if not self.games and not self.skip and not self.include:
+            raise ValueError(
+                f"Color '{self.color}': Must specify at least one of: 'games', 'skip', or 'include'"
+            )
+
+        # Cannot use both skip and include shorthand
+        if self.skip and self.include:
+            raise ValueError(
+                f"Color '{self.color}': Cannot specify both 'skip' and 'include' shorthand. Use one or the other."
+            )
+
+        # CAN mix games list with shorthand (for detailed control on specific games)
+        # The games list will override the shorthand for those specific indices
+
+        return self
+
+
+class Config(BaseModel):
+    """Complete configuration for PGN curation."""
+
+    name: str = Field(..., description="Configuration name")
+    version: Optional[str] = Field(None, description="Version for tracking")
+    created: Optional[str] = Field(None, description="Creation date")
+    description: Optional[str] = Field(
+        None, description="Description of this configuration"
+    )
+    source: str = Field(..., description="Source PGN file path")
+    output: str = Field(..., description="Output file prefix")
+    configs: List[ColorConfig] = Field(
+        ..., description="Color-specific configurations (at least one required)"
+    )
+
     @field_validator("source")
     @classmethod
     def validate_source_exists(cls, v: str) -> str:
@@ -139,37 +169,24 @@ class Config(BaseModel):
     @field_validator("output")
     @classmethod
     def validate_output_path(cls, v: str) -> str:
-        if not v.endswith(".pgn"):
-            raise ValueError(f"Output file must have .pgn extension: {v}")
-        # Check if output directory exists
+        # Output is now a prefix, not a full filename
+        # The final filename will be constructed as {prefix}_{color}_{depth}.pgn
+        # Check if output directory exists (if a path is provided)
         output_dir = os.path.dirname(v)
         if output_dir and not os.path.exists(output_dir):
             raise ValueError(f"Output directory does not exist: {output_dir}")
         return v
 
     @model_validator(mode="after")
-    def validate_game_specification(self):
-        """Validate game specification and mutual exclusions."""
-        # Must specify either games, skip, or include
-        if not self.games and not self.skip and not self.include:
-            raise ValueError(
-                "Must specify at least one of: 'games', 'skip', or 'include'"
-            )
+    def validate_configs_not_empty(self):
+        """Ensure at least one color config exists."""
+        if not self.configs or len(self.configs) == 0:
+            raise ValueError("Must specify at least one color configuration in 'configs'")
 
-        # Cannot use both skip and include shorthand
-        if self.skip and self.include:
-            raise ValueError(
-                "Cannot specify both 'skip' and 'include' shorthand. Use one or the other."
-            )
-
-        # CAN mix games list with shorthand (for detailed control on specific games)
-        # The games list will override the shorthand for those specific indices
+        # Check for duplicate colors
+        colors = [c.color for c in self.configs]
+        if len(colors) != len(set(colors)):
+            raise ValueError("Cannot have duplicate color configurations")
 
         return self
 
-    @model_validator(mode="after")
-    def validate_source_output_different(self):
-        """Ensure source and output are different files."""
-        if os.path.abspath(self.source) == os.path.abspath(self.output):
-            raise ValueError("Source and output files must be different")
-        return self

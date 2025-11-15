@@ -307,23 +307,27 @@ def generate_starter_config(pgn_path: str, output_path: str = None):
         "name": f"Repertoire from {Path(pgn_path).name}",
         "description": "Auto-generated starter config - edit as needed",
         "source": pgn_path,
-        "output": f"{Path(pgn_path).stem}_curated.pgn",
-        "settings": {
-            "max_depth": 14,
-            "preserve_comments": True,
-            "add_curation_comment": True,
-        },
-        "games": [],
+        "output": f"{Path(pgn_path).stem}_curated",  # Output prefix
+        "configs": [
+            {
+                "color": "white",  # or "black"
+                "settings": {
+                    "preserve_comments": True,
+                    "add_curation_comment": True,
+                },
+                "games": [],
+            }
+        ],
     }
 
-    # Add all games with include action
+    # Add all games with include action to the first color config
     for i, game in enumerate(games):
         white = game.headers.get("White", f"Game {i + 1}")
         variations = count_variations(game)
 
-        config["games"].append(
+        config["configs"][0]["games"].append(
             {
-                "index": i + 1,  # 1-based indexing (as per project convention)
+                "index": i + 1,  # 1-based indexing
                 "action": "include",
                 "name": f"{white} ({variations} variations)",
             }
@@ -335,7 +339,9 @@ def generate_starter_config(pgn_path: str, output_path: str = None):
 
     console.print(f"[green]✓[/green] Generated starter config: {output_path}")
     console.print(f"\nEdit this file to:")
+    console.print("  - Change color to 'white' or 'black'")
     console.print("  - Change actions to 'skip' or 'skip_keep_headers'")
     console.print("  - Add skip_variations or keep_variations")
-    console.print("  - Adjust max_depth per game")
+    console.print("  - Adjust max_depth per game (optional, in half-moves)")
     console.print(f"\nThen run: pgnc build {output_path}")
+    console.print("         or: pgnc build {output_path} --depth 10")

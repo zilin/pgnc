@@ -4,12 +4,17 @@
 name: "Simple Repertoire - Layer 1"
 description: "Quick start example with shorthand syntax"
 source: classical_openings.pgn
-output: my_repertoire.pgn
+output: my_repertoire  # Output prefix
 
-settings:
-  max_depth: 14  # Trim all variations to 14 moves
+# Color-specific configurations
+configs:
+  - color: white
+    include: "1"  # Just the first game
+    settings:
+      preserve_comments: true
+      add_curation_comment: true
 
-# Super simple: Just include the games you want!
-# All other games are automatically skipped
-include: "1"  # Just the first game (Sicilian Najdorf)
+# Note: Use --depth flag when building (default is 10 move pairs)
+# Final output will be: {output}_{color}_{depth}.pgn
+# Example: my_repertoire_white_10.pgn (with --depth 10)
 

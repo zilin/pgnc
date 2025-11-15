@@ -5,7 +5,7 @@ from typing import Dict, List, Tuple
 from rich.console import Console
 from rich.table import Table
 
-from .models import Config, Game
+from .models import Config, ColorConfig, Game
 from .pgn_processor import (
     parse_pgn,
     filter_game_variations,
@@ -24,16 +24,33 @@ class BuildStats:
 
     def __init__(self):
         self.input_games = 0
-        self.output_games = 0
         self.input_variations = 0
-        self.output_variations = 0
         self.input_avg_depth = 0.0
-        self.output_avg_depth = 0.0
         self.input_size = 0
+
+        # Per-color stats
+        self.color_stats = {}  # color -> ColorBuildStats
+
+        # Combined output stats
+        self.total_output_games = 0
+        self.total_output_variations = 0
+        self.total_output_size = 0
+
+
+class ColorBuildStats:
+    """Statistics for a single color build."""
+
+    def __init__(self, color: str):
+        self.color = color
+        self.output_games = 0
+        self.output_variations = 0
+        self.output_avg_depth = 0.0
         self.output_size = 0
+        self.output_files = []  # List of output filenames
+        self.game_stats = []  # List of (game_index, game_name, variations_before, variations_after)
 
 
-def build(config: Config, dry_run: bool = False, verbose: bool = False) -> BuildStats:
+def build(config: Config, dry_run: bool = False, verbose: bool = False, depth: int = 10, split: bool = False) -> BuildStats:
     """
     Execute the build process based on configuration.
 
@@ -41,22 +58,24 @@ def build(config: Config, dry_run: bool = False, verbose: bool = False) -> Build
         config: Validated configuration object
         dry_run: If True, don't write output file
         verbose: If True, show detailed progress
+        depth: Number of move pairs to include (default: 10)
+        split: If True, save each game in a separate file
 
     Returns:
         BuildStats object with build statistics
     """
     stats = BuildStats()
 
-    # Read source PGN
+    # Store output prefix
+    output_prefix = config.output
+
+    # Read source PGN once (shared across all color configs)
     if verbose:
         console.print(f"[cyan]Reading source PGN:[/cyan] {config.source}")
 
     source_games = parse_pgn(config.source)
     stats.input_games = len(source_games)
     stats.input_size = os.path.getsize(config.source)
-
-    # Expand shorthand syntax into games list if needed
-    config = expand_shorthand_to_games(config, len(source_games))
 
     # Calculate input statistics
     for game in source_games:
@@ -72,24 +91,86 @@ def build(config: Config, dry_run: bool = False, verbose: bool = False) -> Build
             f"{stats.input_variations} variations"
         )
 
-    # Process games
+    # Process each color configuration
+    for color_config in config.configs:
+        color_stats = build_color_config(
+            color_config,
+            source_games,
+            output_prefix,
+            depth,
+            dry_run,
+            verbose,
+            split
+        )
+
+        stats.color_stats[color_config.color] = color_stats
+        stats.total_output_games += color_stats.output_games
+        stats.total_output_variations += color_stats.output_variations
+        stats.total_output_size += color_stats.output_size
+
+    return stats
+
+
+def build_color_config(
+    color_config: ColorConfig,
+    source_games: List,
+    output_prefix: str,
+    depth: int,
+    dry_run: bool,
+    verbose: bool,
+    split: bool
+) -> ColorBuildStats:
+    """
+    Build output for a single color configuration.
+
+    Args:
+        color_config: Color-specific configuration
+        source_games: Parsed source PGN games
+        output_prefix: Output filename prefix
+        depth: Number of move pairs
+        dry_run: Preview mode
+        verbose: Detailed output
+        split: Save each game separately
+
+    Returns:
+        ColorBuildStats with statistics for this color
+    """
+    color_stats = ColorBuildStats(color_config.color)
+
+    # Calculate max_depth based on color
+    if color_config.color == "white":
+        calculated_max_depth = 2 * depth + 1
+    else:  # black
+        calculated_max_depth = 2 * depth
+
     if verbose:
-        console.print("\n[cyan]Processing games...[/cyan]")
+        console.print(f"\n[bold cyan]Processing {color_config.color.upper()} repertoire:[/bold cyan]")
 
+    # Expand shorthand syntax into games list if needed
+    color_config = expand_shorthand_to_games(color_config, len(source_games))
+
+    # Process games
     output_games = []
+    output_game_indices = []  # Track original source game indices (1-based)
 
-    for game_config in config.games:
+    for game_config in color_config.games:
         if game_config.index >= len(source_games):
-            console.print(
-                f"[yellow]⚠[/yellow] Game index {game_config.index + 1} out of range "
-                f"(only {len(source_games)} games), skipping"
-            )
+            if verbose:
+                console.print(
+                    f"  [yellow]⚠[/yellow] Game index {game_config.index + 1} out of range "
+                    f"(only {len(source_games)} games), skipping"
+                )
             continue
 
         source_game = source_games[game_config.index]
+        # Use appropriate header based on color
+        header_field = "Black" if color_config.color == "black" else "White"
         game_name = game_config.name or source_game.headers.get(
-            "White", f"Game {game_config.index + 1}"
+            header_field, f"Game {game_config.index + 1}"
         )
+
+        # Count variations in source game (before any processing)
+        source_variations = count_variations(source_game)
 
         # Process based on action
         if game_config.action == "skip":
@@ -102,11 +183,19 @@ def build(config: Config, dry_run: bool = False, verbose: bool = False) -> Build
         if game_config.action == "skip_keep_headers":
             filtered_game = filter_game_variations(source_game, game_config)
             output_games.append(filtered_game)
+            output_game_indices.append(game_config.index + 1)  # Store 1-based index
             if verbose:
                 console.print(
                     f"  [yellow]⊘[/yellow] Game [{game_config.index + 1}] {game_name}: "
                     "Headers preserved, variations removed"
                 )
+            # Track stats - all variations removed
+            color_stats.game_stats.append((
+                game_config.index + 1,
+                game_name,
+                source_variations,
+                0
+            ))
             continue
 
         # Filter variations
@@ -115,18 +204,15 @@ def build(config: Config, dry_run: bool = False, verbose: bool = False) -> Build
         if filtered_game is None:
             continue
 
-        # Count variations before trimming
-        variations_before = count_variations(filtered_game)
-
         # Apply depth trimming
-        max_depth = game_config.max_depth or config.settings.max_depth
-        if max_depth:
-            filtered_game = trim_game_depth(filtered_game, max_depth)
+        # Use per-game override if specified, otherwise use calculated max_depth
+        max_depth = game_config.max_depth or calculated_max_depth
+        filtered_game = trim_game_depth(filtered_game, max_depth)
 
         variations_after = count_variations(filtered_game)
 
         # Skip empty games if configured
-        if config.settings.remove_empty_games and variations_after == 0:
+        if color_config.settings.remove_empty_games and variations_after == 0:
             if verbose:
                 console.print(
                     f"  [yellow]⚠[/yellow] Game [{game_config.index + 1}] {game_name}: "
@@ -135,6 +221,15 @@ def build(config: Config, dry_run: bool = False, verbose: bool = False) -> Build
             continue
 
         output_games.append(filtered_game)
+        output_game_indices.append(game_config.index + 1)  # Store 1-based index
+
+        # Track stats for this game (source variations vs final variations)
+        color_stats.game_stats.append((
+            game_config.index + 1,  # 1-based index
+            game_name,
+            source_variations,  # Original count from source
+            variations_after    # Final count after filtering and trimming
+        ))
 
         # Report
         if verbose:
@@ -155,158 +250,98 @@ def build(config: Config, dry_run: bool = False, verbose: bool = False) -> Build
                 f"{variations_after} variation(s){filter_info}{depth_info}"
             )
 
-    # Calculate output statistics
-    stats.output_games = len(output_games)
+    # Calculate output statistics for this color
+    color_stats.output_games = len(output_games)
     for game in output_games:
-        stats.output_variations += count_variations(game)
+        color_stats.output_variations += count_variations(game)
 
-    if stats.output_variations > 0 and len(output_games) > 0:
+    if color_stats.output_variations > 0 and len(output_games) > 0:
         total_depth = sum(get_average_depth(g) for g in output_games if g)
-        stats.output_avg_depth = total_depth / len(output_games)
+        color_stats.output_avg_depth = total_depth / len(output_games)
 
     # Write output
     if not dry_run:
-        if verbose:
-            console.print(f"\n[cyan]Writing output:[/cyan] {config.output}")
+        if split:
+            # Split mode: write each game to a separate file
+            if verbose:
+                console.print(f"  [cyan]Writing output (split mode):[/cyan]")
 
-        write_pgn(output_games, config.output, config.settings.add_curation_comment)
-        stats.output_size = os.path.getsize(config.output)
+            total_size = 0
+            for i, game in enumerate(output_games):
+                # Construct filename: {prefix}_{color}_{depth}_{game_index}.pgn
+                # game_index is from original source file (1-based)
+                original_game_index = output_game_indices[i]
+                game_filename = f"{output_prefix}_{color_config.color}_{depth}_{original_game_index}.pgn"
+                write_pgn([game], game_filename, color_config.settings.add_curation_comment)
+                file_size = os.path.getsize(game_filename)
+                total_size += file_size
+                color_stats.output_files.append(game_filename)
 
-        if verbose:
-            console.print(f"[green]✓[/green] Written successfully")
-    else:
-        console.print(f"\n[yellow][DRY RUN][/yellow] Would write to: {config.output}")
-        # Estimate size (rough approximation)
-        if stats.input_size > 0:
-            size_ratio = stats.output_variations / max(stats.input_variations, 1)
-            stats.output_size = int(stats.input_size * size_ratio)
+                if verbose:
+                    console.print(f"    [green]✓[/green] {game_filename}")
 
-    return stats
-
-
-def print_statistics(stats: BuildStats):
-    """
-    Print build statistics in a nice table format.
-
-    Args:
-        stats: BuildStats object
-    """
-    console.print("\n[cyan]Statistics:[/cyan]")
-
-    table = Table(show_header=True, header_style="bold cyan")
-    table.add_column("Metric", style="dim")
-    table.add_column("Input", justify="right")
-    table.add_column("Output", justify="right")
-    table.add_column("Change", justify="right")
-
-    # Games
-    table.add_row(
-        "Games",
-        str(stats.input_games),
-        str(stats.output_games),
-        _format_change(stats.input_games, stats.output_games),
-    )
-
-    # Variations
-    table.add_row(
-        "Variations",
-        str(stats.input_variations),
-        str(stats.output_variations),
-        _format_change(stats.input_variations, stats.output_variations),
-    )
-
-    # Average depth
-    table.add_row(
-        "Avg Depth (moves)",
-        f"{stats.input_avg_depth:.1f}",
-        f"{stats.output_avg_depth:.1f}",
-        _format_change(stats.input_avg_depth, stats.output_avg_depth, is_float=True),
-    )
-
-    # File size
-    table.add_row(
-        "File Size",
-        _format_bytes(stats.input_size),
-        _format_bytes(stats.output_size),
-        _format_change(stats.input_size, stats.output_size, is_bytes=True),
-    )
-
-    console.print(table)
-
-
-def _format_change(
-    before: float, after: float, is_float: bool = False, is_bytes: bool = False
-) -> str:
-    """Format the change between before and after values."""
-    if before == 0:
-        return "—"
-
-    diff = after - before
-    percent = ((after - before) / before) * 100
-
-    if is_bytes:
-        diff_str = _format_bytes(abs(diff))
-        if diff < 0:
-            return f"[red]-{diff_str} ({percent:.0f}%)[/red]"
-        elif diff > 0:
-            return f"[green]+{diff_str} (+{percent:.0f}%)[/green]"
+            color_stats.output_size = total_size
         else:
-            return "—"
+            # Normal mode: write all games to a single file
+            final_output = f"{output_prefix}_{color_config.color}_{depth}.pgn"
 
-    if is_float:
-        if diff < 0:
-            return f"[red]{diff:.1f} ({percent:.0f}%)[/red]"
-        elif diff > 0:
-            return f"[green]+{diff:.1f} (+{percent:.0f}%)[/green]"
-        else:
-            return "—"
+            if verbose:
+                console.print(f"  [cyan]Writing output:[/cyan] {final_output}")
 
-    # Integer
-    if diff < 0:
-        return f"[red]{diff:+d} ({percent:.0f}%)[/red]"
-    elif diff > 0:
-        return f"[green]{diff:+d} (+{percent:.0f}%)[/green]"
+            write_pgn(output_games, final_output, color_config.settings.add_curation_comment)
+            color_stats.output_size = os.path.getsize(final_output)
+            color_stats.output_files.append(final_output)
+
+            if verbose:
+                console.print(f"  [green]✓[/green] Written successfully")
     else:
-        return "—"
+        # Dry run mode
+        if split:
+            if verbose:
+                console.print(f"  [yellow][DRY RUN][/yellow] Would write {len(output_games)} files:")
+            for i in range(len(output_games)):
+                original_game_index = output_game_indices[i]
+                game_filename = f"{output_prefix}_{color_config.color}_{depth}_{original_game_index}.pgn"
+                color_stats.output_files.append(game_filename)
+                if verbose:
+                    console.print(f"    - {game_filename}")
+        else:
+            final_output = f"{output_prefix}_{color_config.color}_{depth}.pgn"
+            color_stats.output_files.append(final_output)
+            if verbose:
+                console.print(f"  [yellow][DRY RUN][/yellow] Would write to: {final_output}")
+
+    return color_stats
 
 
-def _format_bytes(size: int) -> str:
-    """Format byte size in human-readable format."""
-    for unit in ["B", "KB", "MB", "GB"]:
-        if size < 1024.0:
-            return f"{size:.1f}{unit}"
-        size /= 1024.0
-    return f"{size:.1f}TB"
-
-
-def expand_shorthand_to_games(config: Config, total_games: int) -> Config:
+def expand_shorthand_to_games(color_config: ColorConfig, total_games: int) -> ColorConfig:
     """
     Expand shorthand 'skip' or 'include' into full games list.
     Merges with existing games list if both are specified.
 
     Args:
-        config: Config with potentially shorthand syntax
+        color_config: ColorConfig with potentially shorthand syntax
         total_games: Total number of games in source PGN
 
     Returns:
-        Config with expanded games list
+        ColorConfig with expanded games list
     """
     # If only games list exists (no shorthand), it's already converted to 0-based
-    if config.games and not config.skip and not config.include:
-        return config
+    if color_config.games and not color_config.skip and not color_config.include:
+        return color_config
 
     # Build index map from existing games list (if any)
     existing_games_map = {}
-    if config.games:
-        for game in config.games:
+    if color_config.games:
+        for game in color_config.games:
             existing_games_map[game.index] = game  # Already 0-based
 
     # Generate games list from shorthand
     games_list = []
 
-    if hasattr(config, "_use_skip") and config._use_skip:
+    if hasattr(color_config, "_use_skip") and color_config._use_skip:
         # Skip mode: include all games EXCEPT those in skip list
-        skip_indices = config._skip_indices  # 1-based
+        skip_indices = color_config._skip_indices  # 1-based
         for i in range(total_games):
             # Check if this game has detailed config
             if i in existing_games_map:
@@ -324,9 +359,9 @@ def expand_shorthand_to_games(config: Config, total_games: int) -> Config:
                 game.index = i  # Convert to 0-based internally
                 games_list.append(game)
 
-    elif hasattr(config, "_use_include") and config._use_include:
+    elif hasattr(color_config, "_use_include") and color_config._use_include:
         # Include mode: skip all games EXCEPT those in include list
-        include_indices = config._include_indices  # 1-based
+        include_indices = color_config._include_indices  # 1-based
         for i in range(total_games):
             # Check if this game has detailed config
             if i in existing_games_map:
@@ -343,5 +378,96 @@ def expand_shorthand_to_games(config: Config, total_games: int) -> Config:
                 game.index = i  # Convert to 0-based internally
                 games_list.append(game)
 
-    config.games = games_list
-    return config
+    color_config.games = games_list
+    return color_config
+
+
+def print_statistics(stats: BuildStats):
+    """
+    Print build statistics in a nice table format.
+
+    Args:
+        stats: BuildStats object
+    """
+    console.print("\n[bold cyan]Overall Statistics:[/bold cyan]")
+
+    # Input stats table
+    table = Table(show_header=True, header_style="bold cyan", title="Input")
+    table.add_column("Metric", style="dim")
+    table.add_column("Value", justify="right")
+
+    table.add_row("Games", str(stats.input_games))
+    table.add_row("Variations", str(stats.input_variations))
+    table.add_row("Avg Depth (moves)", f"{stats.input_avg_depth:.1f}")
+    table.add_row("File Size", _format_bytes(stats.input_size))
+
+    console.print(table)
+
+    # Per-color stats
+    for color, color_stats in stats.color_stats.items():
+        console.print(f"\n[bold {color}]{color.upper()} Repertoire:[/bold {color}]")
+
+        table = Table(show_header=True, header_style=f"bold {color}")
+        table.add_column("Metric", style="dim")
+        table.add_column("Value", justify="right")
+
+        table.add_row("Games", str(color_stats.output_games))
+        table.add_row("Variations", str(color_stats.output_variations))
+        table.add_row("Avg Depth (moves)", f"{color_stats.output_avg_depth:.1f}")
+        table.add_row("File Size", _format_bytes(color_stats.output_size))
+        table.add_row("Output Files", str(len(color_stats.output_files)))
+
+        console.print(table)
+
+        # Show per-game details
+        if color_stats.game_stats:
+            console.print(f"\n  [bold]Per-Game Details:[/bold]")
+            game_table = Table(show_header=True, header_style=f"bold {color}")
+            game_table.add_column("Game", style="dim")
+            game_table.add_column("Name", style="dim")
+            game_table.add_column("Before", justify="right")
+            game_table.add_column("After", justify="right")
+            game_table.add_column("Change", justify="right")
+
+            for game_idx, game_name, var_before, var_after in color_stats.game_stats:
+                change = var_after - var_before
+                if change < 0:
+                    change_str = f"[red]{change} ({(change/var_before)*100:.1f}%)[/red]"
+                elif change > 0:
+                    change_str = f"[green]+{change} (+{(change/var_before)*100:.1f}%)[/green]"
+                else:
+                    change_str = "—"
+
+                game_table.add_row(
+                    f"[{game_idx}]",
+                    game_name,
+                    str(var_before),
+                    str(var_after),
+                    change_str
+                )
+
+            console.print(game_table)
+
+        if color_stats.output_files:
+            console.print(f"\n  Files: {', '.join(color_stats.output_files)}")
+
+    # Combined totals
+    console.print("\n[bold green]Combined Totals:[/bold green]")
+    table = Table(show_header=True, header_style="bold green")
+    table.add_column("Metric", style="dim")
+    table.add_column("Value", justify="right")
+
+    table.add_row("Total Output Games", str(stats.total_output_games))
+    table.add_row("Total Output Variations", str(stats.total_output_variations))
+    table.add_row("Total Output Size", _format_bytes(stats.total_output_size))
+
+    console.print(table)
+
+
+def _format_bytes(size: int) -> str:
+    """Format byte size in human-readable format."""
+    for unit in ["B", "KB", "MB", "GB"]:
+        if size < 1024.0:
+            return f"{size:.1f}{unit}"
+        size /= 1024.0
+    return f"{size:.1f}TB"
