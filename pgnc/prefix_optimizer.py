@@ -191,43 +191,6 @@ def parse_move_sequence_to_list(move_string: str) -> List[str]:
     return moves
 
 
-def get_game_traversal_order(game: chess.pgn.Game) -> Dict[Tuple[str, ...], int]:
-    """
-    Get the traversal order of all variation paths in the game tree.
-
-    Uses DFS to assign order numbers to each variation path.
-
-    Args:
-        game: Chess game
-
-    Returns:
-        Dict mapping move tuples to their traversal order
-    """
-    order_map = {}
-    counter = [0]  # Use list to allow mutation in nested function
-
-    def traverse(node, board, path_moves=[]):
-        """DFS traversal to assign order numbers."""
-        if not node.variations:
-            # Leaf node - record the path
-            path_tuple = tuple(path_moves)
-            order_map[path_tuple] = counter[0]
-            counter[0] += 1
-            return
-
-        # Traverse children in order
-        for variation in node.variations:
-            new_board = board.copy()
-            move_san = new_board.san(variation.move)
-            new_board.push(variation.move)
-
-            traverse(variation, new_board, path_moves + [move_san])
-
-    traverse(game, game.board())
-
-    return order_map
-
-
 def optimize_variation_list(
     variations: List[str],
     reference_game: chess.pgn.Game = None
@@ -262,24 +225,8 @@ def optimize_variation_list(
         variations_set, all_game_variations
     )
 
-    # Get traversal order from reference game if provided
-    if reference_game:
-        order_map = get_game_traversal_order(reference_game)
-
-        # Sort by traversal order
-        def get_order(moves_list):
-            moves_tuple = tuple(moves_list)
-            # Find the order of this path or its prefix
-            for i in range(len(moves_list), 0, -1):
-                prefix = moves_tuple[:i]
-                if prefix in order_map:
-                    return order_map[prefix]
-            return float('inf')  # Not found - put at end
-
-        covering_set.sort(key=get_order)
-    else:
-        # Fallback: sort lexicographically
-        covering_set.sort()
+    # Sort alphabetically for deterministic output
+    covering_set.sort()
 
     # Convert back to PGN format with move numbers
     optimized = []
