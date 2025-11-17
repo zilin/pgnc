@@ -12,8 +12,7 @@ def generate_replication_yaml(
     output_path: str,
     pgn1_path: str,
     color: str,
-    depth: int,
-    include_diff: bool = False
+    depth: int
 ) -> str:
     """
     Generate a replication YAML config from comparison results.
@@ -24,7 +23,6 @@ def generate_replication_yaml(
         pgn1_path: Path to the source/base PGN file (pgn1)
         color: Repertoire color ("white" or "black")
         depth: Number of move pairs
-        include_diff: Whether to include diff statistics as comments
 
     Returns:
         Path to generated YAML file
@@ -75,7 +73,7 @@ def generate_replication_yaml(
     config["configs"].append(color_config)
 
     # Write YAML with custom formatting
-    yaml_content = _format_yaml_with_comments(config, comparisons, include_diff)
+    yaml_content = _format_yaml_with_comments(config, comparisons)
 
     with open(output_path, "w") as f:
         f.write(yaml_content)
@@ -85,24 +83,18 @@ def generate_replication_yaml(
 
 def _format_yaml_with_comments(
     config: dict,
-    comparisons: List[ComparisonResult],
-    include_diff: bool
+    comparisons: List[ComparisonResult]
 ) -> str:
     """
-    Format YAML with optional diff comments.
+    Format YAML with diff comments.
 
     Args:
         config: Configuration dictionary
         comparisons: List of comparison results
-        include_diff: Whether to include diff statistics
 
     Returns:
-        Formatted YAML string
+        Formatted YAML string with diff statistics as comments
     """
-    if not include_diff:
-        # Simple YAML dump without diff comments
-        return yaml.dump(config, default_flow_style=False, sort_keys=False)
-
     # Build YAML with diff comments
     lines = []
 

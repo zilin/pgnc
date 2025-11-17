@@ -256,14 +256,12 @@ pgnc compare baseline.pgn target.pgn --color white --depth 10
 
 # Compare specific games
 pgnc compare baseline.pgn target.pgn --game1 1 --game2 1 -o replication.yaml
-
-# With diff output (shows added/removed variations in YAML)
-pgnc compare baseline.pgn target.pgn --diff -o replication.yaml
 ```
 
 Generated YAML uses game1 as source and includes:
 - `remove_variations`: Optimized list of variations to remove from game1
 - `add_variations`: Optimized list of variations to add to game1 (after removal)
+- Diff statistics as comments (game name, variations count, removed/added counts)
 - Applying this config transforms game1 → game2
 
 ## Dependencies

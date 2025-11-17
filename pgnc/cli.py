@@ -280,12 +280,7 @@ def upload(pgn_file, name, private, token, study_id):
     default=10,
     help="Number of move pairs to compare (default: 10)"
 )
-@click.option(
-    "--include-diff",
-    is_flag=True,
-    help="Include diff statistics as YAML comments"
-)
-def compare(pgn1, pgn2, game1, game2, output, color, depth, include_diff):
+def compare(pgn1, pgn2, game1, game2, output, color, depth):
     """
     Compare two PGN files and generate replication YAML.
 
@@ -306,9 +301,6 @@ def compare(pgn1, pgn2, game1, game2, output, color, depth, include_diff):
 
         # Compare specific games with depth limit
         pgnc compare old.pgn new.pgn --game1 1 --game2 1 --color black --depth 15
-
-        # Include diff statistics as comments
-        pgnc compare old.pgn new.pgn --color white --include-diff
     """
     try:
         from pathlib import Path
@@ -377,8 +369,7 @@ def compare(pgn1, pgn2, game1, game2, output, color, depth, include_diff):
             output,
             pgn1,  # Use pgn1 as source (the base to be transformed)
             color,
-            depth,
-            include_diff=include_diff
+            depth
         )
 
         console.print(f"\n[green]✅ Replication config generated:[/green] {output}")
