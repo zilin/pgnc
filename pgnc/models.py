@@ -30,26 +30,16 @@ class Game(BaseModel):
         ..., description="What to do with this game"
     )
     name: Optional[str] = Field(None, description="Optional name for documentation")
-    skip_variations: Optional[List[VariationFilter]] = Field(
-        None, description="Variations to skip (blacklist approach)"
+    remove_variations: Optional[List[VariationFilter]] = Field(
+        None, description="Variations to remove from source"
     )
-    keep_variations: Optional[List[VariationFilter]] = Field(
-        None, description="Variations to keep (whitelist approach)"
+    add_variations: Optional[List[VariationFilter]] = Field(
+        None, description="Variations to add (result = (all - removed) ∪ added)"
     )
     max_depth: Optional[int] = Field(
         None, ge=1, description="Override calculated max_depth for this game (in half-moves)"
     )
     min_depth: Optional[int] = Field(None, ge=0, description="Minimum variation depth")
-
-    @model_validator(mode="after")
-    def check_skip_keep_mutual_exclusion(self):
-        """Ensure skip_variations and keep_variations are not both specified."""
-        if self.skip_variations and self.keep_variations:
-            raise ValueError(
-                f"Game {self.index}: Cannot specify both skip_variations and keep_variations. "
-                "Choose one approach."
-            )
-        return self
 
 
 class Settings(BaseModel):

@@ -42,6 +42,10 @@ pgnc init <file.pgn> -o config.yaml
 
 # Upload to Lichess
 pgnc upload <file.pgn> --study-id ABC123
+
+# Compare PGN files
+pgnc compare <baseline.pgn> <target.pgn> --color white --depth 10
+pgnc compare <baseline.pgn> <target.pgn> --game1 1 --game2 1 -o replication.yaml
 ```
 
 ### Testing
@@ -113,10 +117,12 @@ There are currently no automated tests in the project.
 - Conversion happens in `config.expand_shorthand_for_color()` and `builder.expand_shorthand_to_games()`
 
 **Variation Filtering**:
-- **Whitelist approach** (`keep_variations`): Only keep variations matching specified move sequences
-- **Blacklist approach** (`skip_variations`): Skip variations matching specified move sequences
-- Cannot mix both approaches in same game
+- Uses union semantics: `result = (all - removed) ∪ added`
+- **`remove_variations`**: Remove variations matching specified move sequences (blacklist)
+- **`add_variations`**: Add variations back (overrides removal) or construct new variations (whitelist)
+- Can combine both in same game - add_variations overrides remove_variations
 - Filters match by move sequence prefix (e.g., "1.e4 c5" matches all Sicilian lines)
+- `add_variations` can construct completely new variations that don't exist in source
 
 **Shorthand Syntax**:
 - `include: "1,3,5-10"` - Include only these games, skip all others
@@ -139,7 +145,10 @@ pgnc/
 ├── config.py           # Config loading and validation
 ├── models.py           # Pydantic data models
 ├── builder.py          # Main build orchestration and stats
-├── pgn_processor.py    # PGN parsing, filtering, trimming, writing
+├── pgn_processor.py    # PGN parsing, filtering, trimming, writing, variation construction
+├── comparator.py       # PGN comparison logic, two-phase optimization
+├── prefix_optimizer.py # Prefix tree optimization for variation lists
+├── yaml_generator.py   # Generate replication YAML from comparison results
 ├── inspector.py        # PGN inspection and analysis
 ├── lichess.py          # Lichess API integration
 └── utils.py            # Range parsing utilities
@@ -182,6 +191,80 @@ Uploads PGN files to Lichess studies:
 - Study must exist (create manually on lichess.org first)
 - Each game in PGN becomes a chapter in the study
 - Token stored in `~/.pgnc/lichess_token` or passed via `--token` flag
+
+## PGN Comparison and Replication (pgnc/comparator.py)
+
+The comparison feature detects differences between two PGN files and generates a replication YAML config that transforms the baseline game into the target game.
+
+### Two-Phase Optimization Workflow
+
+The comparison uses a two-phase approach to minimize the size of generated configs:
+
+**Phase 1: Remove Variations**
+1. Extract all variations from game1 (baseline) and game2 (target)
+2. Find variations to remove: `to_remove = variations1 - variations2` (in game1 but NOT in game2)
+3. Apply prefix tree optimization to find minimal covering set
+4. Optimize against game1's original structure to ensure validity
+
+**Phase 2: Add Variations**
+1. Apply the optimized `remove_variations` to game1 → creates game1' (intermediate state)
+2. Extract variations from game1' (the reduced game)
+3. Find variations to add: `to_add = variations2 - variations1'` (in game2 but NOT in game1')
+4. Apply prefix tree optimization against game1' structure
+5. Optimize against the reduced game1' structure
+
+### Why Two-Phase?
+
+The two-phase approach ensures:
+- **Correct semantics**: Optimizations are validated against the actual game tree structure where they'll be applied
+- **Minimal configs**: `remove_variations` is optimized against the full tree, `add_variations` against the reduced tree
+- **Variation construction**: `add_variations` can construct completely new variations that don't exist in the source
+
+### Variation Construction
+
+The filtering logic (`filter_game_variations`) implements union semantics: `(all - removed) ∪ added`
+
+After filtering existing variations, it constructs new variations from `add_variations`:
+- Parses each add_variation move sequence
+- Walks down the game tree, following existing paths where available
+- Creates new branches when the path doesn't exist
+- Allows adding variations that don't exist in the source game
+
+This enables transforming a game with 20 variations to a game with 8 different variations by:
+1. Removing a common prefix (e.g., `"1.e4"`) that eliminates all original variations
+2. Adding 8 new complete variation paths from scratch
+
+### Prefix Tree Optimization (pgnc/prefix_optimizer.py)
+
+Reduces variation lists by finding minimal covering sets:
+- Uses deterministic DFS traversal (index order) for consistent output
+- Validates prefix covering points against the reference game structure
+- Only uses a prefix if ALL variations in the game matching that prefix are in the target set
+- Prevents over-optimization (e.g., removing "1.e4" when some e4 lines should be kept)
+
+Example:
+```
+Input: ["1.e4 e5 2.Nf3", "1.e4 e5 2.Bc4", "1.e4 c5"]
+Output: ["1.e4"]  (if ALL e4 lines in the game are being removed)
+```
+
+### Compare Command
+
+```bash
+# Compare all games by index (1 vs 1, 2 vs 2, etc.)
+pgnc compare baseline.pgn target.pgn --color white --depth 10
+
+# Compare specific games
+pgnc compare baseline.pgn target.pgn --game1 1 --game2 1 -o replication.yaml
+
+# With diff output (shows added/removed variations in YAML)
+pgnc compare baseline.pgn target.pgn --diff -o replication.yaml
+```
+
+Generated YAML uses game1 as source and includes:
+- `remove_variations`: Optimized list of variations to remove from game1
+- `add_variations`: Optimized list of variations to add to game1 (after removal)
+- Applying this config transforms game1 → game2
 
 ## Dependencies
 

@@ -145,16 +145,16 @@ def validate_config_file(config_path: str) -> tuple[bool, str]:
                 messages.append(f"  ✓ {len(color_config.games)} game(s) with detailed config")
 
             # Count filters (only if games list exists)
-            skip_count = 0
-            keep_count = 0
+            remove_count = 0
+            add_count = 0
             if color_config.games:
-                skip_count = sum(len(g.skip_variations or []) for g in color_config.games)
-                keep_count = sum(len(g.keep_variations or []) for g in color_config.games)
+                remove_count = sum(len(g.remove_variations or []) for g in color_config.games)
+                add_count = sum(len(g.add_variations or []) for g in color_config.games)
 
-            if skip_count > 0:
-                messages.append(f"  ✓ {skip_count} variation skip filter(s) defined")
-            if keep_count > 0:
-                messages.append(f"  ✓ {keep_count} variation keep filter(s) defined")
+            if remove_count > 0:
+                messages.append(f"  ✓ {remove_count} variation remove filter(s) defined")
+            if add_count > 0:
+                messages.append(f"  ✓ {add_count} variation add filter(s) defined")
 
             if color_config.plan_comments:
                 messages.append(f"  ✓ {len(color_config.plan_comments)} plan comment(s) to add")

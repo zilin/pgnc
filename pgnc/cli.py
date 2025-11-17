@@ -8,6 +8,8 @@ from .config import load_config, validate_config_file
 from .builder import build, print_statistics
 from .inspector import inspect_pgn, generate_starter_config
 from .lichess import upload_pgn_to_study, save_token, load_token
+from .comparator import compare_pgn_files
+from .yaml_generator import generate_replication_yaml
 
 
 console = Console()
@@ -254,6 +256,134 @@ def upload(pgn_file, name, private, token, study_id):
         console.print(f"\n[green]✅ Upload complete![/green]")
         console.print(f"Study: [cyan]{result['study_url']}[/cyan]")
         
+    except Exception as e:
+        console.print(f"[red]Error:[/red] {str(e)}")
+        raise click.Abort()
+
+
+@cli.command()
+@click.argument("pgn1", type=click.Path(exists=True))
+@click.argument("pgn2", type=click.Path(exists=True))
+@click.option("--game1", type=int, help="Specific game index in first PGN (1-based)")
+@click.option("--game2", type=int, help="Specific game index in second PGN (1-based)")
+@click.option("--output", "-o", type=click.Path(), help="Output YAML path")
+@click.option(
+    "--color",
+    type=click.Choice(["white", "black"]),
+    required=True,
+    help="Repertoire color (required for depth calculation)"
+)
+@click.option(
+    "--depth",
+    "-d",
+    type=int,
+    default=10,
+    help="Number of move pairs to compare (default: 10)"
+)
+@click.option(
+    "--include-diff",
+    is_flag=True,
+    help="Include diff statistics as YAML comments"
+)
+def compare(pgn1, pgn2, game1, game2, output, color, depth, include_diff):
+    """
+    Compare two PGN files and generate replication YAML.
+
+    Analyzes differences between games and outputs a YAML config
+    compatible with 'pgnc build' that can replicate the changes.
+
+    Default behavior (no --game1/--game2):
+      Compares all games by index (game 1 vs 1, 2 vs 2, etc.)
+      Only outputs games with differences
+
+    Specific game comparison:
+      Use --game1 and --game2 to compare specific games
+
+    Examples:
+
+        # Compare all games, output differences for white repertoire
+        pgnc compare old.pgn new.pgn --color white
+
+        # Compare specific games with depth limit
+        pgnc compare old.pgn new.pgn --game1 1 --game2 1 --color black --depth 15
+
+        # Include diff statistics as comments
+        pgnc compare old.pgn new.pgn --color white --include-diff
+    """
+    try:
+        from pathlib import Path
+
+        # Validate game index constraints
+        if (game1 is not None and game2 is None) or (game1 is None and game2 is not None):
+            console.print("[red]Error:[/red] Both --game1 and --game2 must be specified together")
+            raise click.Abort()
+
+        # Default output path
+        if output is None:
+            pgn1_stem = Path(pgn1).stem
+            pgn2_stem = Path(pgn2).stem
+            output = f"{pgn1_stem}_to_{pgn2_stem}_replication.yaml"
+
+        # Show comparison info
+        console.print(f"\n[cyan]Comparing PGN files:[/cyan]")
+        console.print(f"  Baseline: {pgn1}")
+        console.print(f"  Target:   {pgn2}")
+        console.print(f"  Color:    {color}")
+        console.print(f"  Depth:    {depth} move pairs")
+
+        if game1 is not None and game2 is not None:
+            console.print(f"  Mode:     Specific games (game {game1} vs game {game2})")
+        else:
+            console.print(f"  Mode:     All games by index")
+
+        console.print()
+
+        # Perform comparison
+        comparisons = compare_pgn_files(
+            pgn1,
+            pgn2,
+            game1_idx=game1,
+            game2_idx=game2,
+            color=color,
+            depth=depth
+        )
+
+        if not comparisons:
+            console.print("[green]✓[/green] No differences found between the games!")
+            return
+
+        # Show summary
+        console.print(f"[bold]Found differences in {len(comparisons)} game(s):[/bold]\n")
+
+        for comparison in comparisons:
+            console.print(f"  [cyan]Game [{comparison.game2_index}]:[/cyan] {comparison.game2_name}")
+            console.print(
+                f"    Variations: {comparison.total_variations_game1} → "
+                f"{comparison.total_variations_game2}"
+            )
+
+            if comparison.removed_variations:
+                console.print(f"    [red]Removed:[/red] {len(comparison.removed_variations)}")
+            if comparison.added_variations:
+                console.print(f"    [green]Added:[/green] {len(comparison.added_variations)}")
+
+            console.print()
+
+        # Generate YAML
+        console.print(f"[cyan]Generating replication YAML:[/cyan] {output}")
+
+        generate_replication_yaml(
+            comparisons,
+            output,
+            pgn1,  # Use pgn1 as source (the base to be transformed)
+            color,
+            depth,
+            include_diff=include_diff
+        )
+
+        console.print(f"\n[green]✅ Replication config generated:[/green] {output}")
+        console.print(f"\nApply changes with: [cyan]pgnc build {output} --depth {depth}[/cyan]")
+
     except Exception as e:
         console.print(f"[red]Error:[/red] {str(e)}")
         raise click.Abort()

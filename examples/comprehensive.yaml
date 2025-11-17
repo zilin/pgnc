@@ -22,7 +22,7 @@ configs:
         action: include
         name: "Against Sicilian"
         max_depth: 14  # Override calculated depth (in half-moves)
-        skip_variations:
+        remove_variations:
           - moves: "2... e6 3. d4"
             reason: "Not in our repertoire"
 
@@ -39,7 +39,7 @@ configs:
         action: include
         name: "Sicilian Defense: Najdorf Variation"
         max_depth: 14  # Override for this game
-        skip_variations:
+        remove_variations:
           - moves: "6... e5 7. Nde2 Be7 7... b5 8. Nd5"
             reason: "Too complex for now"
 

@@ -233,13 +233,13 @@ def build_color_config(
 
         # Report
         if verbose:
-            skip_count = len(game_config.skip_variations or [])
-            keep_count = len(game_config.keep_variations or [])
+            remove_count = len(game_config.remove_variations or [])
+            add_count = len(game_config.add_variations or [])
             filter_info = ""
-            if skip_count > 0:
-                filter_info = f", {skip_count} skip filter(s)"
-            elif keep_count > 0:
-                filter_info = f", {keep_count} keep filter(s)"
+            if remove_count > 0:
+                filter_info = f", {remove_count} remove filter(s)"
+            if add_count > 0:
+                filter_info += f", {add_count} add filter(s)" if filter_info else f", {add_count} add filter(s)"
 
             depth_info = ""
             if max_depth:

@@ -88,50 +88,68 @@ def matches_variation_pattern(
 
 def should_skip_variation(
     move_path: List[chess.Move],
-    skip_filters: Optional[List[VariationFilter]],
-    keep_filters: Optional[List[VariationFilter]],
+    remove_filters: Optional[List[VariationFilter]],
+    add_filters: Optional[List[VariationFilter]],
 ) -> bool:
     """
     Determine if a variation should be skipped based on filters.
 
+    Logic: result = (all - removed) ∪ added
+    - If variation matches remove_filters: skip it
+    - If variation matches add_filters: keep it (even if it was removed)
+    - Otherwise: keep it (default)
+
     Args:
         move_path: Current variation's move sequence
-        skip_filters: Blacklist filters (skip if matches)
-        keep_filters: Whitelist filters (skip if doesn't match)
+        remove_filters: Variations to remove from source
+        add_filters: Variations to add (overrides removal)
 
     Returns:
         True if variation should be skipped
     """
-    # Whitelist approach: keep only if matches
-    if keep_filters:
-        for keep_filter in keep_filters:
-            try:
-                pattern_moves = parse_move_sequence(keep_filter.moves)
-                if matches_variation_pattern(move_path, pattern_moves):
-                    # Check depth constraint if specified
-                    if keep_filter.depth and len(move_path) > keep_filter.depth:
-                        continue
-                    return False  # Keep this variation
-            except ValueError:
-                # Invalid move sequence in filter, skip it
-                continue
-        return True  # Didn't match any keep filter, so skip
+    should_remove = False
+    should_add = False
 
-    # Blacklist approach: skip if matches
-    if skip_filters:
-        for skip_filter in skip_filters:
+    # Check if variation matches remove filters
+    if remove_filters:
+        for remove_filter in remove_filters:
             try:
-                pattern_moves = parse_move_sequence(skip_filter.moves)
+                pattern_moves = parse_move_sequence(remove_filter.moves)
                 if matches_variation_pattern(move_path, pattern_moves):
                     # Check depth constraint if specified
-                    if skip_filter.depth and len(move_path) <= skip_filter.depth:
+                    if remove_filter.depth and len(move_path) <= remove_filter.depth:
                         continue
-                    return True  # Skip this variation
+                    should_remove = True
+                    break
             except ValueError:
                 # Invalid move sequence in filter, skip it
                 continue
 
-    return False  # Don't skip by default
+    # Check if variation matches add filters
+    if add_filters:
+        for add_filter in add_filters:
+            try:
+                pattern_moves = parse_move_sequence(add_filter.moves)
+                if matches_variation_pattern(move_path, pattern_moves):
+                    # Check depth constraint if specified
+                    if add_filter.depth and len(move_path) > add_filter.depth:
+                        continue
+                    should_add = True
+                    break
+            except ValueError:
+                # Invalid move sequence in filter, skip it
+                continue
+
+    # Union logic: (all - removed) ∪ added
+    # - If should_add: keep it (add overrides remove)
+    # - If should_remove and not should_add: skip it
+    # - Otherwise: keep it (default)
+    if should_add:
+        return False  # Keep it (in the added set)
+    elif should_remove:
+        return True   # Skip it (removed and not added back)
+    else:
+        return False  # Keep it (default - in the "all" set)
 
 
 def filter_game_variations(
@@ -170,7 +188,7 @@ def filter_game_variations(
 
             # Check if this variation should be skipped
             if should_skip_variation(
-                new_path, game_config.skip_variations, game_config.keep_variations
+                new_path, game_config.remove_variations, game_config.add_variations
             ):
                 continue
 
@@ -192,7 +210,49 @@ def filter_game_variations(
 
     traverse_and_filter(game, filtered)
 
+    # Add variations that don't exist in the source
+    if game_config.add_variations:
+        for add_filter in game_config.add_variations:
+            try:
+                moves = parse_move_sequence(add_filter.moves)
+                _add_variation_to_game(filtered, moves)
+            except ValueError:
+                # Invalid move sequence, skip it
+                continue
+
     return filtered
+
+
+def _add_variation_to_game(game: chess.pgn.Game, moves: List[chess.Move]):
+    """
+    Add a variation to a game, constructing the path if it doesn't exist.
+
+    Args:
+        game: Game to add variation to
+        moves: Sequence of moves to add
+    """
+    if not moves:
+        return
+
+    current_node = game
+    board = game.board()
+
+    for move in moves:
+        # Check if this move already exists as a variation
+        existing_var = None
+        for variation in current_node.variations:
+            if variation.move == move:
+                existing_var = variation
+                break
+
+        if existing_var:
+            # Move already exists, continue down this path
+            current_node = existing_var
+            board.push(move)
+        else:
+            # Move doesn't exist, create it
+            current_node = current_node.add_variation(move)
+            board.push(move)
 
 
 def trim_game_depth(game: chess.pgn.Game, max_depth: int) -> chess.pgn.Game:
